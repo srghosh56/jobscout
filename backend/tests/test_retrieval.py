@@ -81,6 +81,8 @@ async def test_each_filter(corpus: None, filters: dict[str, object], expected: s
 
 def test_filters_is_empty() -> None:
     assert SearchFilters().is_empty()
+    assert SearchFilters(remote_policy="remote").remote_policy == ["remote"]  # type: ignore[arg-type]
+    assert SearchFilters(skills="Python").skills == ["Python"]  # type: ignore[arg-type]
     assert not SearchFilters(city="Berlin").is_empty()
 
 

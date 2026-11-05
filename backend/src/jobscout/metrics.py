@@ -46,3 +46,9 @@ TOOL_CALLS_RECOVERED = Counter(
     "jobscout_tool_calls_recovered_total",
     "Tool calls recovered from text (model did not use native calling)",
 )
+
+SCOPE_REFUSALS = Counter("jobscout_scope_refusals_total", "Questions refused by the scope check")
+SINGLE_SHOT_QUESTIONS = Counter(
+    "jobscout_single_shot_questions_total",
+    "Questions answered with one search, without the router",
+)

@@ -1,6 +1,6 @@
 # Evaluation
 
-**Read this first.** All numbers below were produced by scripts in this repo on 2026-11-02 with **local models**: Mistral 7B (Q4, Ollama) as chat model, extractor and judge, and bge-m3 for embeddings, on an Apple M4 Pro. They do **not** describe what the hosted Mistral API or Gemini would score ("not measured"). Expected answers in the golden set (`eval/golden.yaml`, version 1) are generated from reference SQL and rule-based predicates, and the LLM-judge scores are **uncalibrated**.
+**Read this first.** The scope check and tool-argument repair were added after this run, so the agent numbers describe the earlier version until the evaluation is rerun. All numbers below were produced by scripts in this repo on 2026-11-02 with **local models**: Mistral 7B (Q4, Ollama) as chat model, extractor and judge, and bge-m3 for embeddings, on an Apple M4 Pro. They do **not** describe what the hosted Mistral API or Gemini would score ("not measured"). Expected answers in the golden set (`eval/golden.yaml`, version 1) are generated from reference SQL and rule-based predicates, and the LLM-judge scores are **uncalibrated**.
 
 Reproduce: `make dataset-stats`, `make eval-full`, `make eval-record` (smoke), `make retrieval-bench`, `make ablations`, then `make eval-report` to regenerate the tables between the markers.
 

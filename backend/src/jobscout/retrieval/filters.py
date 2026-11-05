@@ -3,9 +3,9 @@ LIMIT apply to the filtered set)."""
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import ColumnElement, and_, exists, func, literal_column, or_, select, true
 
 from jobscout.db.models import Posting
@@ -31,6 +31,12 @@ class SearchFilters(BaseModel):
     bluecard_status: list[BlueCard] | None = None
     job_family: str | None = None
     active_only: bool = True
+
+    @field_validator("remote_policy", "seniority", "skills", "bluecard_status", mode="before")
+    @classmethod
+    def _single_value_to_list(cls, value: Any) -> Any:
+        """Models often send "remote" where the field needs ["remote"]."""
+        return [value] if isinstance(value, str) else value
 
     def is_empty(self) -> bool:
         return not any(
