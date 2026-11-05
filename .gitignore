@@ -24,4 +24,8 @@ data/cv_optin/
 eval/runs/
 *.dump
 .DS_Store
+# infrastructure state
+deploy/gcp/.terraform/
+deploy/gcp/*.tfstate*
+deploy/gcp/terraform.tfvars
 *.tsbuildinfo

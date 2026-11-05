@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars (git-ignored values are fine here; no secrets in this file).
+project_id         = "my-jobscout-project"
+region             = "europe-west3"
+billing_account_id = "000000-000000-000000"
+budget_amount_eur  = 20
+alert_email        = "me@example.com"
+github_repository  = "srghosh56/jobscout"
+jobscout_image     = "europe-west3-docker.pkg.dev/my-jobscout-project/jobscout/jobscout:0.1.0"
+llm_gateway_image  = "europe-west3-docker.pkg.dev/my-jobscout-project/jobscout/llm-gateway:0.1.0"

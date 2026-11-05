@@ -1,0 +1,35 @@
+# Build → push to Artifact Registry → deploy to Cloud Run, authenticated with Workload Identity
+# Federation (no JSON keys). Manual trigger only.
+# Repository variables (names only): GCP_PROJECT_ID, GCP_REGION, WIF_PROVIDER, DEPLOYER_SA
+name: deploy-gcp
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # required for OIDC → WIF
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/jobscout/jobscout:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+      - run: docker build -t "$IMAGE" -f deploy/spaces/Dockerfile .
+      - run: docker push "$IMAGE"
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: jobscout
+          region: ${{ vars.GCP_REGION }}
+          image: ${{ env.IMAGE }}
+      - name: Smoke test
+        run: deploy/smoke_test.sh "$(gcloud run services describe jobscout --region ${{ vars.GCP_REGION }} --format 'value(status.url)')"

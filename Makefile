@@ -17,7 +17,7 @@ PHONY_EXTRA := golden dataset-stats eval-report db-up
 .PHONY: help setup gitleaks-install up down logs migrate seed ingest extract embed expiry insights \
 	serve web build-web openapi test test-backend test-frontend coverage lint lint-backend lint-frontend \
 	gitleaks eval-smoke eval-full eval-record ablations retrieval-bench \
-	feedback-review mcp mcp-http pipeline
+	feedback-review mcp mcp-http k8s-up k8s-down gcp-plan pipeline
 
 help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -141,3 +141,12 @@ mcp: ## MCP server over stdio
 mcp-http: ## MCP server over streamable HTTP on :8765
 	$(JS) mcp --transport streamable-http
 
+# ---------- infrastructure ----------
+k8s-up: ## kind cluster + Helm install (local only)
+	deploy/k8s/up.sh
+
+k8s-down:
+	kind delete cluster --name jobscout
+
+gcp-plan: ## terraform plan only
+	cd deploy/gcp && terraform init -input=false && terraform plan -input=false -var-file=terraform.tfvars

@@ -1,0 +1,13 @@
+{{- if .Values.grafanaDashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "jobscout.fullname" . }}-dashboard
+  labels:
+    {{- include "jobscout.labels" . | nindent 4 }}
+    # The Grafana sidecar in kube-prometheus-stack loads any ConfigMap with this label.
+    grafana_dashboard: "1"
+data:
+  jobscout.json: |-
+{{ .Files.Get "dashboards/jobscout.json" | indent 4 }}
+{{- end }}

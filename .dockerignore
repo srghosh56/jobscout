@@ -11,3 +11,4 @@
 **/.ruff_cache
 frontend/dist
 eval/runs
+deploy/gcp/.terraform

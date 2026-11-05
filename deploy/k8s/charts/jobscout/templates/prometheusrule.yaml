@@ -1,0 +1,22 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "jobscout.fullname" . }}
+  labels:
+    {{- include "jobscout.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: jobscout
+      rules:
+        - alert: JobScoutHighErrorRate
+          expr: |
+            sum(rate(jobscout_http_request_duration_seconds_count{status_class="5xx"}[5m]))
+              / clamp_min(sum(rate(jobscout_http_request_duration_seconds_count[5m])), 1e-9)
+              > {{ .Values.prometheusRule.errorRateThreshold }}
+          for: 10m
+          labels: {severity: page}
+          annotations:
+            summary: More than {{ mulf .Values.prometheusRule.errorRateThreshold 100 }}% of JobScout requests fail
+            runbook_url: {{ .Values.prometheusRule.runbookUrl | quote }}
+{{- end }}

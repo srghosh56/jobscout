@@ -1,0 +1,40 @@
+# Runs `jobscout migrate` (Alembic upgrade + read-only role password). A plain Job (not a Helm
+# hook): Helm post-install hooks only run after `--wait` sees the Deployment ready, but the API's
+# /readyz stays 503 until the schema exists, which would deadlock. The name includes the release
+# revision so upgrades create a new Job (Job specs are immutable). Argo CD treats it as a
+# Sync hook. Retries (backoffLimit) cover Postgres still starting.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "jobscout.fullname" . }}-migrate-{{ .Release.Revision }}
+  labels:
+    {{- include "jobscout.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 20
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        {{- include "jobscout.podSecurity" . | nindent 8 }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["jobscout", "migrate"]
+          env:
+            {{- include "jobscout.env" . | nindent 12 }}
+          securityContext:
+            {{- include "jobscout.containerSecurity" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

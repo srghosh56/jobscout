@@ -1,0 +1,25 @@
+# Argo CD watches the Git repo and keeps the cluster matching deploy/k8s/charts/jobscout.
+# Change values, push to main, and Argo CD rolls the change out. Not applied by `make k8s-up`;
+# see deploy/k8s/README.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jobscout
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/srghosh56/jobscout.git
+    targetRevision: main
+    path: deploy/k8s/charts/jobscout
+    helm:
+      valueFiles: [values.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jobscout
+  syncPolicy:
+    automated:
+      prune: true      # delete resources that were removed from Git
+      selfHeal: true   # undo manual changes made with kubectl
+    syncOptions:
+      - CreateNamespace=true

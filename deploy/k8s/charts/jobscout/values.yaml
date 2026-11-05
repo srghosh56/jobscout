@@ -1,0 +1,64 @@
+# One replica by default: chat sessions (LangGraph checkpointer) and rate limits are in-process
+# Scaling out needs a shared checkpointer and a shared rate-limit store.
+replicaCount: 1
+
+image:
+  # Local image loaded into kind with `deploy/k8s/up.sh`. In production: a registry path.
+  repository: jobscout
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+app:
+  llmProvider: ollama
+  chatModel: "mistral:latest"
+  judgeModel: "mistral:latest"
+  embedModel: "bge-m3:latest"
+  # kind on Docker Desktop: pods reach the host's Ollama through host.docker.internal.
+  ollamaBaseUrl: "http://host.docker.internal:11434"
+  rerankerEnabled: "true"
+  publicBaseUrl: "http://localhost:8088"
+  otelEnabled: "false"
+  otelEndpoint: ""
+
+# Secrets: either let the chart create one from these values (local only) or point to an
+# existing Secret with keys DATABASE_URL, READONLY_DATABASE_URL, MISTRAL_API_KEY, GEMINI_API_KEY.
+secrets:
+  existingSecret: ""
+  databaseUrl: ""          # empty + postgres.enabled → in-cluster URL is generated
+  readonlyDatabaseUrl: ""
+  mistralApiKey: ""
+  geminiApiKey: ""
+
+postgres:
+  enabled: true            # in-cluster Postgres 17 + pgvector (dev only; use Neon/Cloud SQL in prod)
+  image: pgvector/pgvector:0.8.7-pg17
+  user: jobscout
+  password: jobscout       # local only
+  database: jobscout
+  roPassword: jobscout_ro  # local only
+  storage: 5Gi
+
+service:
+  port: 80
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 3Gi
+
+serviceMonitor:
+  enabled: false           # needs kube-prometheus-stack CRDs
+  interval: 15s
+
+prometheusRule:
+  enabled: false
+  errorRateThreshold: 0.05
+  runbookUrl: ""
+
+grafanaDashboard:
+  enabled: false           # ConfigMap picked up by the kube-prometheus-stack Grafana sidecar
+
+fullnameOverride: ""
