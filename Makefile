@@ -16,7 +16,7 @@ GITLEAKS_VERSION := 8.30.1
 PHONY_EXTRA := golden dataset-stats eval-report db-up
 .PHONY: help setup gitleaks-install up down logs migrate seed ingest extract embed expiry insights \
 	serve web build-web openapi test test-backend test-frontend coverage lint lint-backend lint-frontend \
-	gitleaks eval-smoke eval-full eval-record ablations retrieval-bench \
+	gitleaks eval-smoke eval-full eval-record ablations retrieval-bench scope-bench \
 	feedback-review mcp mcp-http k8s-up k8s-down gcp-plan pipeline
 
 help: ## list targets
@@ -127,6 +127,9 @@ eval-record: ## re-record the smoke cassettes against the real model
 
 eval-full: ## full 80-question eval against the real model
 	$(UV) python ../eval/run_eval.py --full
+
+scope-bench: ## scope check accuracy on unseen questions (needs the embedding model)
+	$(UV) python ../eval/scope_bench.py
 
 ablations: ## retrieval + agent ablations (+ Gemini/supervisor when GEMINI_API_KEY is set)
 	$(UV) python ../eval/ablations.py

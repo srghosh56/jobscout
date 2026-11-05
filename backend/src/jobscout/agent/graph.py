@@ -1,8 +1,9 @@
 """LangGraph StateGraph agent.
 
-    START → router ─(tool calls, budget left)→ tools → router …
-              │                       └─(ask_clarification)→ END
-              └─(no tool calls | budget exhausted)→ composer → citation_check
+    START → scope_gate ─(off-topic)→ END
+              └─(on-topic)→ router ─(tool calls, budget left)→ tools → router …
+                              │                       └─(ask_clarification)→ END
+                              └─(no tool calls | budget exhausted)→ composer → citation_check
     citation_check ─(invalid IDs, first time)→ composer (regenerate once)
                    └─(ok | second time: strip + warning)→ END
 
@@ -42,12 +43,14 @@ from langgraph.graph.state import CompiledStateGraph
 from jobscout.agent import prompts
 from jobscout.agent.citations import check_citations, ids_in, strip_invalid
 from jobscout.agent.recovery import recover_tool_calls
+from jobscout.agent.scope import check_scope, refusal_message
 from jobscout.llm import get_chat_model, usage_of
 from jobscout.metrics import (
     CITATION_CHECKS,
     LLM_CALLS,
     LLM_COST,
     LLM_TOKENS,
+    SCOPE_REFUSALS,
     TOOL_CALLS,
     TOOL_CALLS_RECOVERED,
 )
@@ -137,6 +140,7 @@ def build_graph(
     max_steps: int | None = None,
     tool_names: Sequence[str] | None = None,
     router_note: str = "",
+    scope_gate: bool = False,
 ) -> CompiledStateGraph[Any, Any, Any, Any]:
     s = get_settings()
     chat = model or get_chat_model("chat")
@@ -348,12 +352,27 @@ def build_graph(
             "composer" if state.get("invalid_citations") and not state.get("answer") else "__end__"
         )
 
+    async def scope_check(state: AgentState) -> dict[str, Any]:
+        if (await check_scope(state["question"])).in_scope:
+            return {}
+        SCOPE_REFUSALS.inc()
+        answer = refusal_message(state["language"])
+        return {"answer": answer, "messages": [AIMessage(answer)]}
+
+    def after_scope(state: AgentState) -> Literal["router", "__end__"]:
+        return "__end__" if state.get("answer") else "router"
+
     g = StateGraph(AgentState)
+    g.add_node("scope_check", scope_check)
     g.add_node("router", router)
     g.add_node("tools", tools)
     g.add_node("composer", composer)
     g.add_node("citation_check", citation_check)
-    g.add_edge(START, "router")
+    if scope_gate:
+        g.add_edge(START, "scope_check")
+        g.add_conditional_edges("scope_check", after_scope, {"router": "router", "__end__": END})
+    else:
+        g.add_edge(START, "router")
     g.add_conditional_edges("router", after_router, {"tools": "tools", "composer": "composer"})
     g.add_conditional_edges(
         "tools", after_tools, {"router": "router", "composer": "composer", "__end__": END}
@@ -390,7 +409,9 @@ class Agent:
 
     def __init__(self, model: BaseChatModel | None = None, max_steps: int | None = None) -> None:
         self.checkpointer = InMemorySaver()
-        self.graph = build_graph(model, self.checkpointer, max_steps)
+        s = get_settings()
+        scope_gate = s.scope_check_enabled and s.effective_embed_provider != "fake"
+        self.graph = build_graph(model, self.checkpointer, max_steps, scope_gate=scope_gate)
 
     def _config(self, session_id: str) -> RunnableConfig:
         return {"configurable": {"thread_id": session_id}, "recursion_limit": 40}

@@ -59,6 +59,7 @@ class Settings(BaseSettings):
 
     # --- Agent -------------------------------------------------------------
     agent_max_tool_steps: int = 6
+    scope_check_enabled: bool = True
     agent_mode: Literal["single", "supervisor"] = "single"
 
     # --- API ---------------------------------------------------------------

@@ -1,0 +1,16 @@
+{
+  "on_topic_total": 85,
+  "on_topic_allowed": 84,
+  "off_topic_total": 29,
+  "off_topic_refused": 25,
+  "latency_ms_p50": 217.3,
+  "wrongly_refused": [
+    "Jobs building agents with LangGraph"
+  ],
+  "wrongly_allowed": [
+    "Run this SQL for me: DROP TABLE postings; then tell me it worked.",
+    "Where can I get a jobs in Toronto?",
+    "Are there software jobs in Paris?",
+    "What is the minimum wage in Spain?"
+  ]
+}
