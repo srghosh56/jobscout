@@ -79,7 +79,7 @@ JobScout is under development.
 - **Trustworthy evaluation:** review the golden-set expected answers by hand and calibrate the LLM judge against hand labels.
 - **Multi-step questions:** make Blue Card and gap checks reliable after a search, then measure the existing supervisor mode.
 - **Out-of-scope requests:** add a scope check that runs before the agent.
-- **Lower latency:** send search-only questions straight to the single-shot RAG pipeline, which is faster and scored better on them.
+- **Lower latency:** add a single-shot RAG path to the product for search-only questions. It was faster and scored better in the evaluation, where it exists today.
 - **Freshness:** complete expiry checks for all postings and schedule them weekly.
 - **Deployment:** publish a hosted demo with data from the Bundesagentur für Arbeit only, then install Argo CD on the kind cluster and sync the application.
 
