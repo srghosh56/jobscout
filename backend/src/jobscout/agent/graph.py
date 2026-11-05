@@ -1,7 +1,8 @@
 """LangGraph StateGraph agent.
 
     START → scope_gate ─(off-topic)→ END
-              └─(on-topic)→ router ─(tool calls, budget left)→ tools → router …
+              └─(on-topic)→ route_check ─(search only)→ tools → composer
+                              └─(other)→ router ─(tool calls, budget left)→ tools → router …
                               │                       └─(ask_clarification)→ END
                               └─(no tool calls | budget exhausted)→ composer → citation_check
     citation_check ─(invalid IDs, first time)→ composer (regenerate once)
@@ -44,6 +45,7 @@ from jobscout.agent import prompts
 from jobscout.agent.citations import check_citations, clean_draft, ids_in, strip_invalid
 from jobscout.agent.recovery import recover_tool_calls
 from jobscout.agent.repair import DEPENDENT_TOOLS, ordered_ids, repair_args
+from jobscout.agent.route import is_search_only
 from jobscout.agent.scope import check_scope, refusal_message
 from jobscout.llm import get_chat_model, usage_of
 from jobscout.metrics import (
@@ -52,6 +54,7 @@ from jobscout.metrics import (
     LLM_COST,
     LLM_TOKENS,
     SCOPE_REFUSALS,
+    SINGLE_SHOT_QUESTIONS,
     TOOL_CALLS,
     TOOL_CALLS_RECOVERED,
 )
@@ -75,6 +78,7 @@ class AgentState(TypedDict, total=False):
     warnings: list[str]
     clarification: str | None
     budget_exhausted: bool
+    single_shot: bool
     tokens_in: int
     tokens_out: int
     citation_history: list[dict[str, int]]
@@ -142,6 +146,7 @@ def build_graph(
     tool_names: Sequence[str] | None = None,
     router_note: str = "",
     scope_gate: bool = False,
+    single_shot: bool = False,
 ) -> CompiledStateGraph[Any, Any, Any, Any]:
     s = get_settings()
     chat = model or get_chat_model("chat")
@@ -285,6 +290,8 @@ def build_graph(
             return "__end__"
         if state.get("tool_steps", 0) >= max_steps:
             return "composer"
+        if state.get("single_shot") and state["turn_results"][-1]["result"].get("results"):
+            return "composer"
         return "router"
 
     async def composer(state: AgentState) -> dict[str, Any]:
@@ -371,8 +378,25 @@ def build_graph(
         answer = refusal_message(state["language"])
         return {"answer": answer, "messages": [AIMessage(answer)]}
 
-    def after_scope(state: AgentState) -> Literal["router", "__end__"]:
-        return "__end__" if state.get("answer") else "router"
+    def after_scope(state: AgentState) -> Literal["next", "__end__"]:
+        return "__end__" if state.get("answer") else "next"
+
+    async def route_check(state: AgentState) -> dict[str, Any]:
+        """Sends a first, search-only question straight to one search, skipping the router."""
+        first_question = sum(isinstance(m, HumanMessage) for m in state["messages"]) == 1
+        if not first_question or not await is_search_only(state["question"]):
+            return {}
+        SINGLE_SHOT_QUESTIONS.inc()
+        call = {
+            "name": "search_postings",
+            "args": {"query": state["question"], "top_k": 8},
+            "id": uuid.uuid4().hex,
+            "type": "tool_call",
+        }
+        return {"messages": [AIMessage(content="", tool_calls=[call])], "single_shot": True}
+
+    def after_route(state: AgentState) -> Literal["tools", "router"]:
+        return "tools" if state.get("single_shot") else "router"
 
     g = StateGraph(AgentState)
     g.add_node("scope_check", scope_check)
@@ -380,11 +404,16 @@ def build_graph(
     g.add_node("tools", tools)
     g.add_node("composer", composer)
     g.add_node("citation_check", citation_check)
+    first_step = "router"
+    if single_shot:
+        g.add_node("route_check", route_check)
+        g.add_conditional_edges("route_check", after_route, {"tools": "tools", "router": "router"})
+        first_step = "route_check"
     if scope_gate:
         g.add_edge(START, "scope_check")
-        g.add_conditional_edges("scope_check", after_scope, {"router": "router", "__end__": END})
+        g.add_conditional_edges("scope_check", after_scope, {"next": first_step, "__end__": END})
     else:
-        g.add_edge(START, "router")
+        g.add_edge(START, first_step)
     g.add_conditional_edges("router", after_router, {"tools": "tools", "composer": "composer"})
     g.add_conditional_edges(
         "tools", after_tools, {"router": "router", "composer": "composer", "__end__": END}
@@ -410,6 +439,7 @@ def turn_input(question: str) -> dict[str, Any]:
         "warnings": [],
         "clarification": None,
         "budget_exhausted": False,
+        "single_shot": False,
         "tokens_in": 0,
         "tokens_out": 0,
         "citation_history": [],
@@ -422,8 +452,14 @@ class Agent:
     def __init__(self, model: BaseChatModel | None = None, max_steps: int | None = None) -> None:
         self.checkpointer = InMemorySaver()
         s = get_settings()
-        scope_gate = s.scope_check_enabled and s.effective_embed_provider != "fake"
-        self.graph = build_graph(model, self.checkpointer, max_steps, scope_gate=scope_gate)
+        real_embeddings = s.effective_embed_provider != "fake"
+        self.graph = build_graph(
+            model,
+            self.checkpointer,
+            max_steps,
+            scope_gate=s.scope_check_enabled and real_embeddings,
+            single_shot=s.single_shot_enabled and real_embeddings,
+        )
 
     def _config(self, session_id: str) -> RunnableConfig:
         return {"configurable": {"thread_id": session_id}, "recursion_limit": 40}

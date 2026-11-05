@@ -57,7 +57,7 @@ flowchart LR
 
 ## Request path of a chat question
 1. Browser `POST /api/chat` with an API key → auth (SHA-256 hash lookup, constant-time compare) → token bucket → request ID.
-2. The LangGraph `StateGraph` runs: **scope check** (bge-m3 compares the question with on-topic and off-topic examples; an off-topic question is refused before the LLM runs) → **router** (LLM with function calling decides tools) → **tools** (independent calls run concurrently, then calls that need their results; invalid posting IDs and CV profiles are repaired) → back to router until it stops calling tools or hits the **6-step cap** → **composer** writes the answer from tool outputs (wrapped as untrusted data) → **citation check** (every `[posting_id]` must have been retrieved; one regeneration, then a warning).
+2. The LangGraph `StateGraph` runs: **scope check** (bge-m3 compares the question with on-topic and off-topic examples; an off-topic question is refused before the LLM runs) → **route check** (a first question that only needs a role or skill search runs one search and goes straight to the composer) → **router** (LLM with function calling decides tools) → **tools** (independent calls run concurrently, then calls that need their results; invalid posting IDs and CV profiles are repaired) → back to router until it stops calling tools or hits the **6-step cap** → **composer** writes the answer from tool outputs (wrapped as untrusted data) → **citation check** (every `[posting_id]` must have been retrieved; one regeneration, then a warning).
 3. Events stream back as SSE: `token`, `tool_call`, `tool_result`, `citation`, `done`.
 4. Every step is an OpenTelemetry span; latency, tokens, tool errors and guard rejections are Prometheus metrics.
 

@@ -1,0 +1,13 @@
+{
+  "search_only_total": 19,
+  "search_only_found": 18,
+  "needs_agent_total": 54,
+  "needs_agent_kept": 52,
+  "missed": [
+    "Data engineer roles using Spark and Kafka"
+  ],
+  "wrongly_shortened": [
+    "Which machine learning roles in Munich mention RAG?",
+    "Stellen für Datenanalyse mit SQL in Düsseldorf"
+  ]
+}

@@ -1,0 +1,50 @@
+# Example questions for the single-shot path. A new question is compared with these by meaning.
+# search_only: finding jobs by role, skill or topic, with one search and one answer.
+# needs_agent: counts, filters, follow-ups, comparisons, CV work and other multi-step questions.
+search_only:
+  - Natural language processing engineer roles
+  - Backend developer jobs with Go and gRPC
+  - Stellen für Embedded-Softwareentwickler
+  - Positions for security analysts
+  - Frontend roles using React and TypeScript
+  - Site reliability engineer openings
+  - Data analyst jobs working with Tableau
+  - Which roles mention reinforcement learning?
+  - Jobs involving recommendation systems
+  - Stellen mit Schwerpunkt Datenbanken
+  - Android developer positions
+  - Roles building search engines
+  - QA automation engineer jobs
+  - Jobs that work with Snowflake and dbt
+  - Stellen für Cloud-Architekten
+needs_agent:
+  - How many software jobs are open in Cologne?
+  - What is the average stated salary for developers?
+  - Which skills are most common in cloud postings?
+  - Wie viele Stellen gibt es in Stuttgart?
+  - Welche Stadt hat die meisten Stellen?
+  - Which company has the most open positions?
+  - What share of postings offer remote work?
+  - Find jobs in Hamburg where English is enough
+  - Remote developer jobs with visa sponsorship
+  - Senior roles in Leipzig with relocation support
+  - Junior jobs that do not require German
+  - Stellen in Dresden ohne Deutschkenntnisse
+  - Jobs that meet the Blue Card salary threshold
+  - Compare these two postings
+  - Vergleiche zwei Stellen in Köln
+  - Find a job and check whether it qualifies for the Blue Card
+  - Show me a posting and summarise its requirements
+  - Find a role and tell me if it offers relocation
+  - Does posting an-1234567890 meet the Blue Card threshold?
+  - Tell me about the first one
+  - Show me more like that
+  - Here is my CV, which jobs fit me?
+  - My profile is backend developer with 4 years of Java, what matches?
+  - Which skills am I missing for this job?
+  - Passt mein Lebenslauf zu dieser Stelle?
+  - Python developer jobs in Bremen
+  - QA engineer roles in Mannheim that use Selenium
+  - Stellen für Softwareentwickler in Nürnberg
+  - Compare two data scientist roles in Bonn
+  - "Profile: backend engineer, 5 years of Python, German B1. What am I missing for this posting?"
