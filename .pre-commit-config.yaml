@@ -1,0 +1,21 @@
+# Install with: make setup  (runs `pre-commit install` from the backend venv)
+repos:
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secret scan of staged changes)
+        entry: scripts/gitleaks.sh protect --staged --redact --verbose
+        language: system
+        pass_filenames: false
+      - id: ruff
+        name: ruff
+        entry: backend/.venv/bin/ruff check --config backend/pyproject.toml
+        language: system
+        types: [python]
+        files: ^(backend|eval)/
+      - id: ruff-format
+        name: ruff format --check
+        entry: backend/.venv/bin/ruff format --check --config backend/pyproject.toml
+        language: system
+        types: [python]
+        files: ^(backend|eval)/

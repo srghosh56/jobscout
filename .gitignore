@@ -1,0 +1,27 @@
+# secrets
+.env
+.env.*
+!.env.example
+# local tooling / caches
+.tools/
+.cache/
+**/.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+node_modules/
+frontend/dist/
+frontend/coverage/
+# data that must never be committed (posting texts, CVs)
+data/raw/
+data/cache/
+data/cv_optin/
+eval/runs/
+*.dump
+.DS_Store
+*.tsbuildinfo

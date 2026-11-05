@@ -1,0 +1,28 @@
+# SLO-style alerts. Thresholds are starting points, not measured SLOs.
+groups:
+  - name: jobscout
+    rules:
+      - alert: HighErrorRate
+        expr: sum(rate(jobscout_http_request_duration_seconds_count{status_class="5xx"}[5m])) / clamp_min(sum(rate(jobscout_http_request_duration_seconds_count[5m])), 1e-9) > 0.05
+        for: 10m
+        labels: {severity: page}
+        annotations: {summary: "More than 5% of requests fail (RUNBOOK: DB down / high latency)"}
+      - alert: SlowSearchP95
+        expr: histogram_quantile(0.95, sum by (le) (rate(jobscout_http_request_duration_seconds_bucket{route="/api/search"}[10m]))) > 5
+        for: 15m
+        labels: {severity: ticket}
+        annotations: {summary: "Search p95 above 5 s (RUNBOOK: high latency)"}
+      - alert: SlowFirstToken
+        expr: histogram_quantile(0.95, sum by (le) (rate(jobscout_chat_time_to_first_token_seconds_bucket[15m]))) > 60
+        for: 15m
+        labels: {severity: ticket}
+        annotations: {summary: "Chat time-to-first-token p95 above 60 s"}
+      - alert: SqlGuardRejectionSpike
+        expr: sum(increase(jobscout_sql_guard_rejections_total[1h])) > 50
+        labels: {severity: ticket}
+        annotations: {summary: "Many SQL guard rejections: possible abuse or a prompt regression"}
+      - alert: RateLimitedSpike
+        expr: sum(rate(jobscout_rate_limited_total[5m])) > 1
+        for: 10m
+        labels: {severity: ticket}
+        annotations: {summary: "Sustained 429s: abuse or limits too tight"}

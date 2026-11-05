@@ -1,0 +1,20 @@
+# EU Blue Card (Blaue Karte EU) minimum gross annual salaries, Germany.
+# Verified against the official notice on 2026-11-02:
+#   Bundesministerium des Innern, "Bekanntmachung zu § 18g des Aufenthaltsgesetzes über die
+#   Mindestgehälter für die Blaue Karte EU" vom 2. Dezember 2025, BAnz AT 18.12.2025 B3.
+# The output of JobScout is INDICATIVE, NOT LEGAL ADVICE.
+disclaimer: "Indicative only, not legal advice. The immigration authority decides; other requirements (qualification, contract, health insurance) apply."
+thresholds:
+  - year: 2026
+    currency: EUR
+    standard: 50700.00        # § 18g Abs. 1 Satz 1 AufenthG (50% of the pension contribution ceiling)
+    reduced: 45934.20         # § 18g Abs. 1 Satz 2 and Abs. 2 AufenthG (45.3%): shortage occupations, recent graduates
+    reduced_applies_to: "shortage occupations (Engpassberufe), recent graduates (degree within the last 3 years), and IT specialists without a degree (§ 18g Abs. 2)"
+    source_title: "BAnz AT 18.12.2025 B3 – Bekanntmachung zu § 18g AufenthG über die Mindestgehälter für die Blaue Karte EU"
+    source_url: "https://www.bundesanzeiger.de/pub/publication/REViP4bN6jVdpGxPaiQ/content/REViP4bN6jVdpGxPaiQ/BAnz%20AT%2018.12.2025%20B3.pdf"
+    verified_on: "2026-11-02"
+annualisation:
+  months_per_year: 12
+  # ASSUMPTION (not from a legal source): full-time = 40 h/week x 52 weeks.
+  hours_per_year: 2080
+  hours_assumption_note: "Hourly rates are annualised assuming full-time work of 40 hours/week for 52 weeks (2,080 h). This is a JobScout assumption, not a legal rule."

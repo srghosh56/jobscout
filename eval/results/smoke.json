@@ -1,0 +1,55 @@
+{
+  "name": "smoke",
+  "golden_version": 1,
+  "run_at": "20261102T101716",
+  "model": "replayed-cassette",
+  "judge_model": "replayed-cassette",
+  "agent_mode": "single",
+  "embed_provider": "fake",
+  "reranker": false,
+  "metrics": {
+    "n": 20,
+    "errors": 0,
+    "tool_selection_accuracy": 0.7,
+    "sql_execution_accuracy": 0.5,
+    "recall@5": 1.0,
+    "mrr": 1.0,
+    "citation_precision": 0.727,
+    "refusal_correctness": 0.8,
+    "refusal_recall_oos": 0.0,
+    "over_refusal_rate": 0.0,
+    "judge_faithfulness": 4.55,
+    "judge_relevance": 4.45,
+    "latency_p50_s": 0.0,
+    "latency_p95_s": 0.0,
+    "tokens_per_question": 3985.0,
+    "cost_eur_per_question": 0.0,
+    "by_category": {
+      "adversarial": {
+        "n": 2,
+        "tool_selection_accuracy": 0.5
+      },
+      "cv": {
+        "n": 1,
+        "tool_selection_accuracy": 0.0
+      },
+      "multi_step": {
+        "n": 3,
+        "tool_selection_accuracy": 0.0
+      },
+      "out_of_scope": {
+        "n": 2,
+        "tool_selection_accuracy": 0.5
+      },
+      "semantic": {
+        "n": 6,
+        "tool_selection_accuracy": 1.0
+      },
+      "sql": {
+        "n": 6,
+        "tool_selection_accuracy": 1.0
+      }
+    }
+  },
+  "details_file": "eval/runs/smoke_20261102T101716.jsonl"
+}

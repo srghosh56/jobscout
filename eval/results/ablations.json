@@ -1,0 +1,59 @@
+{
+  "retrieval": {
+    "n_questions": 25,
+    "modes": {
+      "fts": {
+        "recall@5": 0.092,
+        "mrr": 0.261,
+        "ndcg@10": 0.16,
+        "latency_p50_s": 0.164,
+        "latency_p95_s": 0.945
+      },
+      "dense": {
+        "recall@5": 0.354,
+        "mrr": 0.743,
+        "ndcg@10": 0.518,
+        "latency_p50_s": 0.277,
+        "latency_p95_s": 0.768
+      },
+      "hybrid": {
+        "recall@5": 0.239,
+        "mrr": 0.509,
+        "ndcg@10": 0.366,
+        "latency_p50_s": 0.274,
+        "latency_p95_s": 0.321
+      },
+      "hybrid_rerank": {
+        "recall@5": 0.441,
+        "mrr": 0.835,
+        "ndcg@10": 0.634,
+        "latency_p50_s": 0.746,
+        "latency_p95_s": 1.043
+      }
+    }
+  },
+  "rag_vs_agent": {
+    "questions": "golden semantic + multi_step",
+    "single_shot_rag": {
+      "n": 40,
+      "judge_faithfulness": 4.95,
+      "judge_relevance": 4.9,
+      "citation_precision": 1.0,
+      "recall@5": 0.441,
+      "mrr": 0.835,
+      "latency_p50_s": 27.3,
+      "latency_p95_s": 33.5
+    },
+    "agent": {
+      "n": 40,
+      "judge_faithfulness": 4.62,
+      "judge_relevance": 4.65,
+      "citation_precision": 0.879,
+      "recall@5": 0.32,
+      "mrr": 0.61,
+      "latency_p50_s": 71.4,
+      "latency_p95_s": 176.2
+    }
+  },
+  "architecture_model": "not measured: GEMINI_API_KEY not set (single vs supervisor+critic and Mistral vs Gemini need it)"
+}

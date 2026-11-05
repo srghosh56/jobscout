@@ -1,0 +1,33 @@
+{
+  "n_questions": 25,
+  "modes": {
+    "fts": {
+      "recall@5": 0.092,
+      "mrr": 0.261,
+      "ndcg@10": 0.16,
+      "latency_p50_s": 0.164,
+      "latency_p95_s": 0.945
+    },
+    "dense": {
+      "recall@5": 0.354,
+      "mrr": 0.743,
+      "ndcg@10": 0.518,
+      "latency_p50_s": 0.277,
+      "latency_p95_s": 0.768
+    },
+    "hybrid": {
+      "recall@5": 0.239,
+      "mrr": 0.509,
+      "ndcg@10": 0.366,
+      "latency_p50_s": 0.274,
+      "latency_p95_s": 0.321
+    },
+    "hybrid_rerank": {
+      "recall@5": 0.441,
+      "mrr": 0.835,
+      "ndcg@10": 0.634,
+      "latency_p50_s": 0.746,
+      "latency_p95_s": 1.043
+    }
+  }
+}

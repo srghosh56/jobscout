@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.tools
+.cache
+**/.venv
+**/node_modules
+**/__pycache__
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+frontend/dist
+eval/runs

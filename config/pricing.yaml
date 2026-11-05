@@ -1,0 +1,13 @@
+# Per-token prices used for the cost estimate. Rule: never invent a price.
+# Local Ollama models cost 0 EUR in API fees (electricity/hardware not counted).
+# Hosted prices are left null until verified on the provider's pricing page; while null,
+# cost per question is reported as "not measured".
+models:
+  "mistral:mistral-small-latest":
+    input_per_mtok_eur: null
+    output_per_mtok_eur: null
+    source: https://mistral.ai/pricing
+  "gemini:gemini-2.5-flash":
+    input_per_mtok_eur: null
+    output_per_mtok_eur: null
+    source: https://ai.google.dev/gemini-api/docs/pricing

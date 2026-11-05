@@ -1,0 +1,66 @@
+# Local stack: make up  (API+web http://localhost:8088, Jaeger :16686, Prometheus :9091, Grafana :3001)
+# Ports avoid 8080/8000/9090/3000, which other local services use on the dev machine.
+name: jobscout
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg17
+    environment:
+      POSTGRES_USER: jobscout
+      POSTGRES_PASSWORD: jobscout
+      POSTGRES_DB: jobscout
+    ports: ["55433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobscout -d jobscout"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: jobscout:local
+    env_file: [../.env]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://jobscout:jobscout@postgres:5432/jobscout
+      READONLY_DATABASE_URL: postgresql+asyncpg://jobscout_ro:jobscout_ro@postgres:5432/jobscout
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      PUBLIC_BASE_URL: http://localhost:8088
+      SEED_ON_START: "true"
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    ports: ["8088:8088"]
+    volumes:
+      - ../.cache/http:/app/.cache/http:ro   # recorded API responses for the offline seed
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/jaeger:2.11.0
+    ports: ["16686:16686", "4318:4318"]
+
+  prometheus:
+    image: prom/prometheus:v3.7.3
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports: ["9091:9090"]
+
+  grafana:
+    image: grafana/grafana:12.2.1
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: admin   # local only; change for anything shared
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3001:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  pgdata:

@@ -1,0 +1,114 @@
+[project]
+name = "jobscout"
+version = "0.1.0"
+description = "JobScout: job-search assistant for international candidates in Germany"
+authors = [
+    { name = "Srobona Ghosh", email = "190096477+srghosh56@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic==1.20.1",
+    "asyncpg==0.32.0",
+    "beautifulsoup4==4.15.0",
+    "datasketch==2.0.0",
+    "fastapi==0.162.0",
+    "feedgen==1.0.0",
+    "httpx==0.28.1",
+    "langchain-core==1.7.3",
+    "langchain-google-genai==4.4.2",
+    "langchain-mistralai==1.1.6",
+    "langchain-ollama==1.1.0",
+    "langgraph==1.2.19",
+    "mcp==2.3.0",
+    "mistralai==3.7.0",
+    "numpy==2.5.4",
+    "opentelemetry-exporter-otlp-proto-http==1.45.2",
+    "opentelemetry-instrumentation-fastapi==0.66b2",
+    "opentelemetry-instrumentation-httpx==0.66b2",
+    "opentelemetry-instrumentation-sqlalchemy==0.66b2",
+    "opentelemetry-sdk==1.45.2",
+    "pgvector==0.5.1",
+    "prometheus-client==0.26.0",
+    "psycopg[binary]==3.3.6",
+    "pydantic==2.14.2",
+    "pydantic-settings==2.16.2",
+    "pypdf==6.21.4",
+    "python-multipart==0.0.33",
+    "pyyaml==6.0.3",
+    "selectolax==1.0.2",
+    "sentence-transformers==6.2.0",
+    "sqlalchemy[asyncio]==2.0.55",
+    "sqlglot==30.27.0",
+    "sse-starlette==3.6.0",
+    "structlog==26.1.0",
+    "tenacity==9.1.4",
+    "torch==2.15.0",
+    "uvicorn[standard]==0.54.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy==2.4.1",
+    "pre-commit==4.7.0",
+    "pytest==9.2.0",
+    "pytest-asyncio==1.4.1.post1",
+    "pytest-cov==7.1.0",
+    "respx==0.23.1",
+    "ruff==0.17.3",
+    "types-pyyaml==6.0.12.20261030",
+    "vcrpy==9.4.0",
+]
+
+[project.scripts]
+jobscout = "jobscout.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "RUF", "SIM", "C4"]
+ignore = ["S101", "RUF001", "RUF002", "RUF003", "E501"]  # E501: layout is enforced by ruff format
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B011"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+markers = [
+  "db: needs the Compose Postgres (skipped if unavailable)",
+  "live: calls a real external API (never in CI)",
+]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["jobscout"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+# CPU-only PyTorch on Linux (Docker, CI, HF Space): avoids multi-GB CUDA wheels.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

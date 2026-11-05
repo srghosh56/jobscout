@@ -1,0 +1,10 @@
+title = "jobscout gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secrets"
+# The Bundesagentur Jobsuche client id is a documented public identifier, not a secret.
+regexes = ['''jobboerse-jobsuche''']
+paths = ['''backend/uv\.lock''', '''frontend/pnpm-lock\.yaml''']

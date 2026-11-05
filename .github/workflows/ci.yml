@@ -1,0 +1,84 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_USER: jobscout
+          POSTGRES_PASSWORD: jobscout
+          POSTGRES_DB: jobscout
+        ports: ["55433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jobscout" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      LLM_PROVIDER: fake
+      RERANKER_ENABLED: "false"
+      DATABASE_URL: postgresql+asyncpg://jobscout:jobscout@localhost:55433/jobscout
+      READONLY_DATABASE_URL: postgresql+asyncpg://jobscout_ro:jobscout_ro@localhost:55433/jobscout
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - name: Install
+        working-directory: backend
+        run: uv sync --frozen
+      - name: Lint and types
+        working-directory: backend
+        run: |
+          uv run ruff check src tests ../eval
+          uv run ruff format --check src tests ../eval
+          uv run mypy
+      - name: Tests (coverage >= 80%)
+        working-directory: backend
+        run: uv run pytest --cov=jobscout --cov-report=xml --cov-fail-under=80
+      - name: Smoke evaluation (replayed from cassettes, no API keys)
+        working-directory: backend
+        run: uv run python ../eval/run_eval.py --smoke --replay
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (pinned CLI, no licence key needed)
+        run: |
+          scripts/install_gitleaks.sh 8.30.1
+          scripts/gitleaks.sh git --redact --no-banner .
