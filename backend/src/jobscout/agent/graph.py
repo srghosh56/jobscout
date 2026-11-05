@@ -41,8 +41,9 @@ from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 
 from jobscout.agent import prompts
-from jobscout.agent.citations import check_citations, ids_in, strip_invalid
+from jobscout.agent.citations import check_citations, clean_draft, ids_in, strip_invalid
 from jobscout.agent.recovery import recover_tool_calls
+from jobscout.agent.repair import DEPENDENT_TOOLS, ordered_ids, repair_args
 from jobscout.agent.scope import check_scope, refusal_message
 from jobscout.llm import get_chat_model, usage_of
 from jobscout.metrics import (
@@ -191,6 +192,7 @@ def build_graph(
             seen.add(key)
             calls.append(call)
         executed, skipped = calls[:budget], calls[budget:]
+        used_args = {id(c): c.get("args") or {} for c in executed}
 
         async def one(call: Any) -> tuple[Any, dict[str, Any], float]:
             write(
@@ -198,12 +200,12 @@ def build_graph(
                     "type": "tool_call",
                     "id": call["id"],
                     "name": call["name"],
-                    "args": call.get("args", {}),
+                    "args": used_args[id(call)],
                 }
             )
             try:
                 with span("tool." + (call["name"] if call["name"] in TOOLS else "unknown")):
-                    result, secs = await run_tool(call["name"], call.get("args") or {})
+                    result, secs = await run_tool(call["name"], used_args[id(call)])
             except Exception as exc:  # tool crashed: report, don't kill the graph
                 result, secs = {"error": f"tool failed: {type(exc).__name__}"}, 0.0
             outcome = "error" if "error" in result and len(result) == 1 else "ok"
@@ -222,7 +224,17 @@ def build_graph(
             return call, result, secs
 
         with span("agent.tools", n_calls=len(executed)):
-            results = await asyncio.gather(*(one(c) for c in executed))
+            independent = [c for c in executed if c["name"] not in DEPENDENT_TOOLS]
+            dependent = [c for c in executed if c["name"] in DEPENDENT_TOOLS]
+            results = list(await asyncio.gather(*(one(c) for c in independent)))
+            known = ordered_ids(
+                [r["result"] for r in state.get("turn_results", [])] + [r for _, r, _ in results]
+            )
+            for call in dependent:
+                used_args[id(call)] = await repair_args(
+                    call["name"], used_args[id(call)], known, state["question"]
+                )
+            results += await asyncio.gather(*(one(c) for c in dependent))
         tool_msgs: list[AnyMessage] = []
         turn = list(state.get("turn_results", []))
         new_ids: set[str] = set()
@@ -235,7 +247,7 @@ def build_graph(
                     name=call["name"],
                 )
             )
-            turn.append({"tool": call["name"], "args": call.get("args", {}), "result": result})
+            turn.append({"tool": call["name"], "args": used_args[id(call)], "result": result})
             new_ids |= ids_in(result)
             if call["name"] == "ask_clarification" and "question" in result:
                 clarification = result["question"]
@@ -299,7 +311,7 @@ def build_graph(
         LLM_TOKENS.labels(role="composer", direction="in").inc(ti)
         LLM_TOKENS.labels(role="composer", direction="out").inc(to)
         return {
-            "draft": str(ai.content),
+            "draft": clean_draft(str(ai.content)),
             "tokens_in": state.get("tokens_in", 0) + ti,
             "tokens_out": state.get("tokens_out", 0) + to,
         }

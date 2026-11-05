@@ -9,6 +9,10 @@ from dataclasses import dataclass
 from typing import Any
 
 ID_RE = re.compile(r"\b(?:ba|an)-[0-9a-f]{10}\b")
+_FAKE_CITATION = re.compile(r"\s*\[(?:an|ba)-\*+\]")
+_TRUST_SENTENCE = re.compile(
+    r"[^.!?\n]*\b(?:untrusted|nicht vertrauenswürdig\w*)\b[^.!?\n]*[.!?]?", re.I
+)
 BRACKET_RE = re.compile(r"\[([^\[\]]{0,200})\]")
 
 
@@ -62,3 +66,8 @@ def strip_invalid(answer: str, invalid: Iterable[str]) -> str:
     for pid in invalid:
         answer = answer.replace(pid, "unverified")
     return answer
+
+
+def clean_draft(text: str) -> str:
+    """Removes internal wording a small model can copy from its instructions."""
+    return _TRUST_SENTENCE.sub("", _FAKE_CITATION.sub("", text)).strip()

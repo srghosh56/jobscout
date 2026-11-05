@@ -125,6 +125,8 @@ async def evaluate_question(
         r["tool_selection_correct"] = not harmful
     else:
         r["tool_selection_correct"] = expected <= set(called)
+        worked = {c["tool"] for c in out.get("tool_results", []) if not c["result"].get("error")}
+        r["tool_success_correct"] = expected <= worked
     if q["category"] == "sql":
         exp = q.get("expected_now") or q.get("expected_result") or {"rows": []}
         exp_rows = exp["rows"]
@@ -192,6 +194,7 @@ def aggregate(results: list[dict[str, Any]]) -> dict[str, Any]:
         "n": len(results),
         "errors": sum(1 for r in results if r.get("error")),
         "tool_selection_accuracy": avg("tool_selection_correct"),
+        "tool_success_accuracy": avg("tool_success_correct"),
         "sql_execution_accuracy": avg("sql_exec_match"),
         "recall@5": avg("recall@5"),
         "mrr": avg("mrr"),

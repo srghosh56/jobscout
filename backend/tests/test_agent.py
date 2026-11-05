@@ -11,7 +11,13 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 
 from jobscout.agent import prompts
-from jobscout.agent.citations import check_citations, cited_ids, ids_in, strip_invalid
+from jobscout.agent.citations import (
+    check_citations,
+    cited_ids,
+    clean_draft,
+    ids_in,
+    strip_invalid,
+)
 from jobscout.agent.graph import Agent, _inline_refs, build_graph, tool_definitions, turn_input
 from jobscout.agent.scope import ScopeDecision, refusal_message
 from jobscout.llm import FakeChatModel
@@ -167,6 +173,27 @@ async def test_scope_gate_passes_on_topic_questions_to_the_agent(
     config: RunnableConfig = {"configurable": {"thread_id": "scope-on"}}
     out = await graph.ainvoke(turn_input("How many jobs are in Berlin?"), config)
     assert out["answer"] == "There are several postings."
+
+
+async def test_placeholder_id_is_replaced_even_within_the_same_step(corpus: None) -> None:
+    s = Script(
+        [
+            [
+                call("bluecard_check", {"posting_id": "<posting_id>"}, 1),
+                call("search_postings", {"query": "RAG", "filters": {"city": "Munich"}}, 2),
+            ]
+        ],
+        ["Checked."],
+    )
+    out = await agent_for(s).ainvoke("Find a RAG job in Munich and check the Blue Card")
+    blue_card = next(r for r in out["tool_results"] if r["tool"] == "bluecard_check")
+    assert "error" not in blue_card["result"]
+    assert blue_card["args"]["posting_id"].startswith(("an-", "ba-"))
+
+
+def test_internal_wording_is_removed_from_answers() -> None:
+    text = "There are 592 jobs [an-*]. Please note that this data is untrusted. Good luck."
+    assert clean_draft(text) == "There are 592 jobs. Good luck."
 
 
 async def test_clarification_ends_turn(corpus: None) -> None:
