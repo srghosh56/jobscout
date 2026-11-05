@@ -4,7 +4,7 @@
 
 ## Features
 - **Search** with filters for city, remote policy, seniority, skills, language, visa support, salary and Blue Card status.
-- **Assistant** built on LangGraph: guarded read-only text-to-SQL, hybrid search and citation checking, streamed over SSE.
+- **Assistant** built on LangGraph: a scope check that refuses off-topic questions, guarded read-only text-to-SQL, hybrid search, repair of invalid tool arguments and citation checking, streamed over SSE.
 - **CV match** with per-posting skill, language and experience gaps. CVs are processed in memory.
 - **Market insights** on English-friendliness, salary transparency and top skills, plus saved searches as RSS/Atom feeds.
 - **MCP server** exposing five of the agent's tools with the same guardrails.
@@ -19,7 +19,7 @@ flowchart LR
   ING --> PG
   PG --> HY[hybrid search: FTS + vectors → RRF → cross-encoder]
   PG --> SQL[guarded text-to-SQL<br/>sqlglot AST + read-only role]
-  HY & SQL --> AG[LangGraph agent<br/>router → tools → composer → citation check]
+  HY & SQL --> AG[LangGraph agent<br/>scope check → router → tools → composer → citation check]
   AG --> API[FastAPI · SSE · API keys · token buckets]
   API --> WEB[React + TypeScript SPA]
   HY & SQL --> MCP[MCP server]
@@ -28,7 +28,7 @@ flowchart LR
 More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Evaluation
-Local Mistral 7B via Ollama, 80-question golden set, 3,003 active de-duplicated postings from the Bundesagentur für Arbeit and Arbeitnow.
+Local Mistral 7B via Ollama, 80-question golden set, 3,003 active de-duplicated postings from the Bundesagentur für Arbeit and Arbeitnow. These results predate the scope check and tool-argument repair, so the agent rows below describe the earlier version until the evaluation is rerun.
 
 | Metric | Value | Source |
 |---|---|---|
@@ -40,6 +40,8 @@ Local Mistral 7B via Ollama, 80-question golden set, 3,003 active de-duplicated 
 | Latency p50 / p95 (local hardware, shared with other jobs) | 35 s / 125 s | `make eval-full` |
 | Retrieval recall@5 / MRR: hybrid+rerank · dense · full-text · hybrid (RRF only) | 0.44/0.84 · 0.35/0.74 · 0.09/0.26 · 0.24/0.51 | `make retrieval-bench` |
 | Single-shot RAG vs agent on search questions (MRR, p50 latency) | RAG wins: 0.84 vs 0.61, 27 s vs 71 s | `make ablations` |
+
+The scope check was measured separately with `make scope-bench`: it allowed 85 of 85 on-topic questions and refused 25 of 29 off-topic questions, with a median of 213 ms per question. One example was added after it wrongly refused an on-topic question, so 85 of 85 is not a fully unseen result.
 
 Reranking is the biggest retrieval gain, and for search-only questions a plain retrieve-then-answer pipeline beats the agent. Full tables and conclusions, including what got worse: [docs/EVALUATION.md](docs/EVALUATION.md).
 
@@ -68,7 +70,9 @@ JobScout is under development.
 - Results come from a local 7B model and do not describe hosted models.
 - Most postings use rule-based extraction (2,775 rules, 228 LLM), because local LLM throughput is limited.
 - Golden-set expected answers are generated from reference SQL and rule-based predicates. LLM-judge scores are uncalibrated, so they are not quoted here.
-- The agent is weak on multi-step questions and does not reliably refuse out-of-scope requests.
+- The agent is weak on multi-step questions, and the local models tested also make SQL mistakes. Repair fixes invalid posting IDs and CV profiles, but not invalid SQL.
+- If a model sends an invalid posting ID, repair uses the first search result, so a request about a later result can check the wrong posting.
+- The scope check still allows some off-topic questions, such as jobs outside Germany.
 - Local latency is high: a median of about 35 seconds per question.
 - Freshness checks are incomplete: 20 of the 3,294 stored postings have been checked so far, so most show "Last checked: never".
 - Not deployed. The Argo CD application and Terraform have not been applied. Posting texts are stored only in the local database and are not in this repository.
@@ -77,8 +81,9 @@ JobScout is under development.
 - **Better answers:** repeat the evaluation with a hosted model through the existing `LLM_PROVIDER` switch.
 - **Better data:** finish LLM extraction for all postings, then re-measure rules against LLM agreement.
 - **Trustworthy evaluation:** review the golden-set expected answers by hand and calibrate the LLM judge against hand labels.
-- **Multi-step questions:** make Blue Card and gap checks reliable after a search, then measure the existing supervisor mode.
-- **Out-of-scope requests:** add a scope check that runs before the agent.
+- **Stronger model:** compare a larger local model on the same questions, then rerun the full evaluation with the chosen model.
+- **Multi-step questions:** make follow-up tools reliable after a search, then measure the existing supervisor mode.
+- **Out-of-scope requests:** extend the scope check to questions about other countries and run it on the supervisor path.
 - **Lower latency:** add a single-shot RAG path to the product for search-only questions. It was faster and scored better in the evaluation, where it exists today.
 - **Freshness:** complete expiry checks for all postings and schedule them weekly.
 - **Deployment:** publish a hosted demo with data from the Bundesagentur für Arbeit only, then install Argo CD on the kind cluster and sync the application.

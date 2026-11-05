@@ -1,7 +1,7 @@
 {
   "name": "smoke",
   "golden_version": 1,
-  "run_at": "20261102T101716",
+  "run_at": "20261105T203013",
   "model": "replayed-cassette",
   "judge_model": "replayed-cassette",
   "agent_mode": "single",
@@ -11,6 +11,7 @@
     "n": 20,
     "errors": 0,
     "tool_selection_accuracy": 0.7,
+    "tool_success_accuracy": 0.75,
     "sql_execution_accuracy": 0.5,
     "recall@5": 1.0,
     "mrr": 1.0,
@@ -51,5 +52,5 @@
       }
     }
   },
-  "details_file": "eval/runs/smoke_20261102T101716.jsonl"
+  "details_file": "eval/runs/smoke_20261105T203013.jsonl"
 }
