@@ -6,7 +6,7 @@ flowchart LR
     BA[Bundesagentur für Arbeit<br/>Jobsuche API]
     AN[Arbeitnow API]
   end
-  subgraph Pipeline["Weekly pipeline (make pipeline / GitHub Actions)"]
+  subgraph Pipeline["Data pipeline (make pipeline)"]
     ING[ingest<br/>polite clients, cache,<br/>clean, upsert, MinHash dedup]
     EXT[extract<br/>LLM JSON-schema mode<br/>+ Pydantic validation]
     BC[bluecard + english_sufficient<br/>deterministic rules]
@@ -62,5 +62,5 @@ flowchart LR
 4. Every step is an OpenTelemetry span; latency, tokens, tool errors and guard rejections are Prometheus metrics.
 
 ## Data model (main table `postings`)
-Identity (`id`, `source`, `source_id`, `url`), cleaned text (`raw_text`, DB only, never committed), all JobLens schema fields as typed columns, derived fields (`english_sufficient`, `bluecard_status`, `annual_salary_eur`), freshness (`is_active`, `last_checked_at`, `consecutive_failures`), provenance (`model_version`, `schema_version`, `content_hash`), search (`tsv_de`, `tsv_en`, `embedding vector(1024)`).
+Identity (`id`, `source`, `source_id`, `url`), cleaned text (`raw_text`, DB only, never committed), all extracted fields as typed columns, derived fields (`english_sufficient`, `bluecard_status`, `annual_salary_eur`), freshness (`is_active`, `last_checked_at`, `consecutive_failures`), provenance (`model_version`, `schema_version`, `content_hash`), search (`tsv_de`, `tsv_en`, `embedding vector(1024)`).
 

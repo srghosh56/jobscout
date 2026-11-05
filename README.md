@@ -1,13 +1,14 @@
 # JobScout
 
-**Find skilled jobs in Germany you can actually get without fluent German.** JobScout filters for "English is enough", visa/relocation support and stated salary, gives an indicative EU Blue Card check against the 2026 thresholds, answers questions in your language with citations to the ads it used, matches your CV without storing it, and publishes market insights.
+**Find skilled jobs in Germany you can get without fluent German.** JobScout filters for "English is enough", visa/relocation support and stated salary, gives an indicative EU Blue Card check against the 2026 thresholds, answers questions in your language with citations to the ads it used, matches your CV without storing it, and publishes market insights.
 
 ## Features
 - **Search** with filters for city, remote policy, seniority, skills, language, visa support, salary and Blue Card status.
 - **Assistant** built on LangGraph: guarded read-only text-to-SQL, hybrid search and citation checking, streamed over SSE.
 - **CV match** with per-posting skill, language and experience gaps. CVs are processed in memory.
 - **Market insights** on English-friendliness, salary transparency and top skills, plus saved searches as RSS/Atom feeds.
-- **MCP server** exposing the same tools and guardrails.
+- **MCP server** exposing five of the agent's tools with the same guardrails.
+- **Infrastructure:** Docker Compose stack, Helm chart for Kubernetes (run on a local kind cluster), an Argo CD application, and Terraform for Google Cloud (validated, not applied).
 
 ## Architecture
 ```mermaid
@@ -57,7 +58,11 @@ make test       # backend + frontend tests
 make lint       # ruff, mypy --strict, ESLint, Prettier, tsc, gitleaks
 make eval-smoke # replayed evaluation, no API keys needed
 make mcp        # MCP server over stdio
+make k8s-up     # local Kubernetes: kind cluster + Helm install
 ```
+
+## Status
+JobScout is under development.
 
 ## Limitations
 - Results come from a local 7B model and do not describe hosted models.
@@ -65,7 +70,18 @@ make mcp        # MCP server over stdio
 - Golden-set expected answers are generated from reference SQL and rule-based predicates. LLM-judge scores are uncalibrated, so they are not quoted here.
 - The agent is weak on multi-step questions and does not reliably refuse out-of-scope requests.
 - Local latency is high: a median of about 35 seconds per question.
-- Not deployed. Posting texts are stored only in the local database and are not in this repository.
+- Freshness checks are incomplete: 20 of the 3,294 stored postings have been checked so far, so most show "Last checked: never".
+- Not deployed. The Argo CD application and Terraform have not been applied. Posting texts are stored only in the local database and are not in this repository.
+
+## Roadmap
+- **Better answers:** repeat the evaluation with a hosted model through the existing `LLM_PROVIDER` switch.
+- **Better data:** finish LLM extraction for all postings, then re-measure rules against LLM agreement.
+- **Trustworthy evaluation:** review the golden-set expected answers by hand and calibrate the LLM judge against hand labels.
+- **Multi-step questions:** make Blue Card and gap checks reliable after a search, then measure the existing supervisor mode.
+- **Out-of-scope requests:** add a scope check that runs before the agent.
+- **Lower latency:** send search-only questions straight to the single-shot RAG pipeline, which is faster and scored better on them.
+- **Freshness:** complete expiry checks for all postings and schedule them weekly.
+- **Deployment:** publish a hosted demo with data from the Bundesagentur für Arbeit only, then install Argo CD on the kind cluster and sync the application.
 
 ## Data and licence
 Jobs from [Arbeitnow](https://www.arbeitnow.com) and the [Bundesagentur für Arbeit Jobsuche](https://www.arbeitsagentur.de/jobsuche/). Blue Card information is indicative only, not legal advice. Licensed under [MIT](LICENSE).
