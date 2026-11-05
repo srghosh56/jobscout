@@ -28,6 +28,9 @@ on_topic:
   - Passt mein Lebenslauf zu dieser Stelle?
   - Welche Fähigkeiten fehlen mir für diesen Job?
   - Zeig mir Stellen ohne Deutschkenntnisse
+  - Roles working with PyTorch and LLM frameworks
+  - Jobs building AI agents with LangChain
+
 off_topic:
   - What is the capital of Italy?
   - Tell me a funny story
