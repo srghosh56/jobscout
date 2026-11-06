@@ -66,6 +66,12 @@ def cmd_expiry(args: argparse.Namespace) -> None:
     print(json.dumps(_run(run_expiry(limit=args.limit)), indent=2, default=str))
 
 
+def cmd_scope_refresh(_: argparse.Namespace) -> None:
+    from jobscout.ingest.run import retire_foreign_sites
+
+    print(json.dumps({"retired": _run(retire_foreign_sites())}, indent=2))
+
+
 def cmd_insights(_: argparse.Namespace) -> None:
     from jobscout.insights import refresh_insights
 
@@ -135,6 +141,7 @@ def main(argv: list[str] | None = None) -> None:
     sp.add_argument("--batch-size", type=int, default=32)
     sp = add("expiry", cmd_expiry, help="check posting URLs")
     sp.add_argument("--limit", type=int, default=None)
+    add("scope-refresh", cmd_scope_refresh, help="retire postings from foreign Arbeitnow sites")
     add("insights", cmd_insights, help="refresh insights views")
     sp = add("seed", cmd_seed, help="load recorded fixtures for a demo")
     sp.add_argument("--skip-llm", action="store_true")

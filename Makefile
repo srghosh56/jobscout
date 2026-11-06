@@ -13,7 +13,7 @@ PNPM := cd frontend && corepack pnpm
 COMPOSE := docker compose -f deploy/docker-compose.yml --env-file .env
 GITLEAKS_VERSION := 8.30.1
 
-PHONY_EXTRA := golden dataset-stats eval-report db-up salary-refresh
+PHONY_EXTRA := golden dataset-stats eval-report db-up salary-refresh scope-refresh
 .PHONY: help setup gitleaks-install up down logs migrate seed ingest extract embed expiry insights \
 	serve web build-web openapi test test-backend test-frontend coverage lint lint-backend lint-frontend \
 	gitleaks eval-smoke eval-full eval-record ablations retrieval-bench scope-bench route-bench \
@@ -66,6 +66,10 @@ embed: ## embeddings for postings without vectors
 
 expiry: ## check posting URLs, mark inactive after 2 consecutive failures
 	$(JS) expiry
+
+scope-refresh: ## retire postings from Arbeitnow's foreign sites, then refresh insights
+	$(JS) scope-refresh
+	$(JS) insights
 
 insights: ## refresh insights materialised views
 	$(JS) insights

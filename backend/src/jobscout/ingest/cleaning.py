@@ -8,6 +8,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
+from urllib.parse import urlsplit
 
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
@@ -208,6 +209,25 @@ _MULTIWORD = [
     ("Other", "san francisco"),
     ("Other", "united states"),
 ]
+
+
+# Arbeitnow runs one site per country. Every posting on these sites states the same country
+# in its text, while arbeitnow.com never states a foreign one.
+ARBEITNOW_HOME_SITES = ("arbeitnow.com", "arbeitnow.de")
+ARBEITNOW_SITES = {
+    "arbeitnow.co.uk": "United Kingdom",
+    "arbeitnow.fr": "France",
+    "arbeitnow.ch": "Switzerland",
+    "arbeitnow.nl": "Netherlands",
+}
+
+
+def arbeitnow_site_country(url: str) -> str | None:
+    """The foreign country whose Arbeitnow site lists this job, else None."""
+    host = (urlsplit(url).hostname or "").removeprefix("www.")
+    if not host.startswith("arbeitnow.") or host in ARBEITNOW_HOME_SITES:
+        return None
+    return ARBEITNOW_SITES.get(host, "Other")
 
 
 def classify_country(location: str | None) -> str | None:

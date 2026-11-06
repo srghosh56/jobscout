@@ -12,6 +12,7 @@ from jobscout.ingest.sources import (
     BA_DETAILS,
     BA_SEARCH,
     BAConfig,
+    arbeitnow_to_posting,
     encode_refnr,
     fetch_arbeitnow,
     fetch_arbeitsagentur,
@@ -132,6 +133,13 @@ async def test_fetch_arbeitsagentur_skips_short_texts_and_respects_limit() -> No
     async with client() as c:
         out = [p async for p in fetch_arbeitsagentur(c, cfg, limit=1)]
     assert [p.source_id for p in out] == ["B"]
+
+
+def test_foreign_arbeitnow_site_wins_over_an_unknown_town() -> None:
+    job = arbeitnow_page(1)["data"][0]
+    job.update(url="https://www.arbeitnow.co.uk/jobs/companies/fictional/ml-0", location="Cardiff")
+    posting = arbeitnow_to_posting(job)
+    assert posting.country == "United Kingdom" and posting.city is None
 
 
 @respx.mock

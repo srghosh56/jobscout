@@ -6,6 +6,23 @@ from jobscout.ingest import cleaning as c
 from jobscout.ingest.dedup import DocForDedup, find_duplicates, shingles
 
 
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://www.arbeitnow.com/jobs/companies/acme/engineer-berlin-1", None),
+        ("https://www.arbeitnow.co.uk/jobs/companies/acme/manager-cardiff-2", "United Kingdom"),
+        ("https://www.arbeitnow.fr/jobs/companies/acme/ingenieur-lyon-3", "France"),
+        ("https://www.arbeitnow.ch/jobs/companies/acme/engineer-nyon-4", "Switzerland"),
+        ("https://www.arbeitnow.nl/jobs/companies/acme/engineer-assen-5", "Netherlands"),
+        ("https://www.arbeitnow.es/jobs/companies/acme/engineer-madrid-6", "Other"),
+        ("https://example.com/jobs/engineer-7", None),
+        ("", None),
+    ],
+)
+def test_arbeitnow_site_country(url: str, expected: str | None) -> None:
+    assert c.arbeitnow_site_country(url) == expected
+
+
 def test_html_to_text_keeps_structure_and_drops_scripts() -> None:
     html = "<h2>Join</h2><p>We&nbsp;build</p><ul><li>Python</li></ul><script>evil()</script>"
     assert c.html_to_text(html) == "Join\nWe build\n- Python"

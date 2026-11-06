@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from jobscout.db.engine import session_scope
 from jobscout.db.models import IngestRun, Posting
 from jobscout.ingest.cleaning import CleanPosting
-from jobscout.ingest.run import ingest_source, run_dedup
+from jobscout.ingest.run import ingest_source, retire_foreign_sites, run_dedup
 from jobscout.ingest.upsert import upsert_postings
 from tests.fixtures.synthetic import LOREM_DE, LOREM_EN
 
@@ -26,6 +26,35 @@ def make(sid: str, text: str = LOREM_EN, source: str = "arbeitnow") -> CleanPost
         city="Berlin",
         cities=["Berlin"],
     )
+
+
+async def test_retire_foreign_sites_keeps_rows_and_frees_german_copies(clean_db: None) -> None:
+    german = make("german")
+    copy = make("german-copy")
+    foreign = make("foreign")
+    foreign.url = "https://www.arbeitnow.ch/jobs/companies/fictional/engineer-1"
+    async with session_scope() as s:
+        await upsert_postings(s, [german, copy, foreign])
+        foreign_id = (
+            await s.execute(select(Posting.id).where(Posting.source_id == "foreign"))
+        ).scalar_one()
+        await s.execute(
+            update(Posting)
+            .where(Posting.source_id == "german-copy")
+            .values(duplicate_of=foreign_id)
+        )
+        await s.commit()
+
+    assert await retire_foreign_sites() == 1
+    assert await retire_foreign_sites() == 0
+
+    async with session_scope() as s:
+        rows = {p.source_id: p for p in (await s.execute(select(Posting))).scalars()}
+    assert len(rows) == 3
+    assert rows["foreign"].is_active is False and rows["foreign"].country == "Switzerland"
+    assert rows["foreign"].inactive_since is not None
+    assert rows["german"].is_active is True
+    assert rows["german-copy"].is_active is True and rows["german-copy"].duplicate_of is None
 
 
 async def test_upsert_is_idempotent_and_detects_changes(clean_db: None) -> None:
