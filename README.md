@@ -28,23 +28,24 @@ flowchart LR
 More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Evaluation
-Local Mistral 7B via Ollama, 80-question golden set, 3,003 active de-duplicated postings from the Bundesagentur für Arbeit and Arbeitnow.
+Mistral 7B as the agent and Llama 3.2 as the judge, both local via Ollama. 80-question golden set, reviewed by hand, on 2,651 active postings in Germany from the Bundesagentur für Arbeit and Arbeitnow.
 
 | Metric | Value | Source |
 |---|---|---|
-| Tool-selection accuracy (all / SQL / semantic / multi-step / CV) | 70% / 100% / 96% / 0% / 12.5% | `make eval-full` |
+| Tool-selection accuracy (all / SQL / search / multi-step / CV) | 72.5% / 100% / 100% / 0% / 12.5% | `make eval-full` |
 | SQL execution accuracy (result-set match) | 60% | `make eval-full` |
-| Agent's first search: recall@5 / MRR | 0.32 / 0.61 | `make eval-full` |
-| Citation precision (first draft, before the citation check) | 67.4% | `make eval-full` |
-| Explicit refusals on out-of-scope/adversarial / over-refusal | 0 of 7 / 0% | `make eval-full` |
-| Latency p50 / p95 (local hardware, shared with other jobs) | 35 s / 125 s | `make eval-full` |
-| Retrieval recall@5 / MRR: hybrid+rerank · dense · full-text · hybrid (RRF only) | 0.44/0.84 · 0.35/0.74 · 0.09/0.26 · 0.24/0.51 | `make retrieval-bench` |
-| Single-shot RAG vs agent on search questions (MRR, p50 latency) | RAG wins: 0.84 vs 0.61, 27 s vs 71 s | `make ablations` |
+| Agent's first search: recall@5 / MRR | 0.65 / 0.91 | `make eval-full` |
+| Citation precision (first draft, before the citation check) | 70.1% | `make eval-full` |
+| Out-of-scope and adversarial requests refused | 6 of 7 | `make eval-full` |
+| Latency p50 / p95 (local hardware) | 34 s / 117 s | `make eval-full` |
+| Retrieval recall@5 / MRR: hybrid+rerank · dense · hybrid (RRF only) · full-text | 0.67/0.91 · 0.51/0.78 · 0.39/0.55 · 0.17/0.29 | `make retrieval-bench` |
+| Single-shot RAG vs agent (MRR · citation precision · p95) | 0.91 vs 0.91 · 98.7% vs 85.0% · 41 s vs 133 s | `make ablations` |
+| LLM judge vs hand labels (20 answers) | 75% agreement, Cohen's kappa 0.49 | `make judge-agreement` |
 
-Reranking is the biggest retrieval gain, and for search-only questions a plain retrieve-then-answer pipeline beats the agent. Full tables and conclusions, including what got worse: [docs/EVALUATION.md](docs/EVALUATION.md).
+Reranking is the biggest retrieval gain. Search works well, while multi-step and CV questions don't: this local model usually calls one tool and stops. Judge agreement is moderate, so judge scores are not quoted here. Full tables and conclusions, including what got worse: [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Run it locally
-Prerequisites: Docker Desktop, [uv](https://docs.astral.sh/uv/), Node ≥ 20.19 with corepack, and [Ollama](https://ollama.com) with `mistral:latest` and `bge-m3:latest` pulled.
+Prerequisites: Docker Desktop, [uv](https://docs.astral.sh/uv/), Node ≥ 20.19 with corepack, and [Ollama](https://ollama.com) with `mistral:latest`, `llama3.2:latest` and `bge-m3:latest` pulled.
 
 ```bash
 cp .env.example .env
@@ -65,22 +66,18 @@ make k8s-up     # local Kubernetes: kind cluster + Helm install
 JobScout is under development.
 
 ## Limitations
-- Results come from a local 7B model and do not describe hosted models.
-- Most postings use rule-based extraction (2,775 rules, 228 LLM), because local LLM throughput is limited.
-- Golden-set expected answers are generated from reference SQL and rule-based predicates. LLM-judge scores are uncalibrated, so they are not quoted here.
-- The agent is weak on multi-step questions and does not reliably refuse out-of-scope requests.
-- Local latency is high: a median of about 35 seconds per question.
-- Freshness checks are incomplete: 20 of the 3,294 stored postings have been checked so far, so most show "Last checked: never".
-- Not deployed. The Argo CD application and Terraform have not been applied. Posting texts are stored only in the local database and are not in this repository.
+- Results come from local models and do not describe hosted models.
+- The agent fails multi-step questions and CV questions in chat, and 40% of its SQL answers are wrong. Answer checks catch some invented numbers, but not all.
+- Most postings use rule-based extraction (2,775 rules, 228 LLM). Salary extraction favours precision, so some stated salaries are missed, and most ads state none.
+- Semantic labels are rule-based, reviewed by one person, and judge agreement rests on 20 answers.
+- Local latency is high: a median of about 34 seconds per question.
+- The data is one load from 1 November 2026. Weekly ingestion is not scheduled, and only 20 postings have been checked for expiry.
+- Not deployed, and no real users yet. The Argo CD application and Terraform have not been applied. Posting texts are stored only in the local database and are not in this repository.
 
 ## Roadmap
-- **Better answers:** repeat the evaluation with a hosted model through the existing `LLM_PROVIDER` switch.
+- **Better answers:** repeat the evaluation with a stronger model through the existing `LLM_PROVIDER` switch.
 - **Better data:** finish LLM extraction for all postings, then re-measure rules against LLM agreement.
-- **Trustworthy evaluation:** review the golden-set expected answers by hand and calibrate the LLM judge against hand labels.
-- **Multi-step questions:** make Blue Card and gap checks reliable after a search, then measure the existing supervisor mode.
-- **Out-of-scope requests:** add a scope check that runs before the agent.
-- **Lower latency:** add a single-shot RAG path to the product for search-only questions. It was faster and scored better in the evaluation, where it exists today.
-- **Freshness:** complete expiry checks for all postings and schedule them weekly.
+- **Freshness:** complete expiry checks for all postings and schedule ingestion weekly.
 - **Deployment:** publish a hosted demo with data from the Bundesagentur für Arbeit only, then install Argo CD on the kind cluster and sync the application.
 
 ## Data and licence

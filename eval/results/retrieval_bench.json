@@ -2,32 +2,32 @@
   "n_questions": 25,
   "modes": {
     "fts": {
-      "recall@5": 0.092,
-      "mrr": 0.261,
-      "ndcg@10": 0.16,
-      "latency_p50_s": 0.164,
-      "latency_p95_s": 0.945
+      "recall@5": 0.17,
+      "mrr": 0.291,
+      "ndcg@10": 0.183,
+      "latency_p50_s": 0.075,
+      "latency_p95_s": 0.159
     },
     "dense": {
-      "recall@5": 0.354,
-      "mrr": 0.743,
-      "ndcg@10": 0.518,
-      "latency_p50_s": 0.277,
-      "latency_p95_s": 0.768
+      "recall@5": 0.511,
+      "mrr": 0.777,
+      "ndcg@10": 0.554,
+      "latency_p50_s": 0.259,
+      "latency_p95_s": 0.31
     },
     "hybrid": {
-      "recall@5": 0.239,
-      "mrr": 0.509,
-      "ndcg@10": 0.366,
-      "latency_p50_s": 0.274,
-      "latency_p95_s": 0.321
+      "recall@5": 0.386,
+      "mrr": 0.55,
+      "ndcg@10": 0.403,
+      "latency_p50_s": 0.264,
+      "latency_p95_s": 0.278
     },
     "hybrid_rerank": {
-      "recall@5": 0.441,
-      "mrr": 0.835,
-      "ndcg@10": 0.634,
-      "latency_p50_s": 0.746,
-      "latency_p95_s": 1.043
+      "recall@5": 0.669,
+      "mrr": 0.913,
+      "ndcg@10": 0.696,
+      "latency_p50_s": 0.732,
+      "latency_p95_s": 0.803
     }
   }
 }
