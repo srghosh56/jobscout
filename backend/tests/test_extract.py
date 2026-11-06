@@ -91,6 +91,12 @@ async def test_two_failures_mark_failed() -> None:
     assert not out.ok and out.attempts == 2 and "validation" in (out.error or "")
 
 
+def test_derive_fields_ignores_llm_salary_not_found_by_rules() -> None:
+    data = {**VALID, "salary": {"min": 2026, "max": None, "currency": "EUR", "period": "hour"}}
+    d = extractor.derive_fields(data, "Founded in 2026. Great team.", 2026)
+    assert d["salary_stated"] is False and d["bluecard_status"] == "salary_not_stated"
+
+
 def test_derive_fields_rules_override_and_ground() -> None:
     data = {**VALID, "visa_sponsorship": "no", "relocation_support": "yes", "salary": None}
     text = "Great team. Salary: 4.300 € monatlich. Fluent German (C1) required."

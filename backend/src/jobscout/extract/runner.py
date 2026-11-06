@@ -55,7 +55,35 @@ async def extract_one(posting_id: str, model: Any, model_id: str) -> dict[str, A
     }
 
 
-RULES_MODEL_VERSION = "rules:jobscout-rules-v2"
+RULES_MODEL_VERSION = "rules:jobscout-rules-v3"
+
+
+async def refresh_salaries() -> dict[str, Any]:
+    """Re-derive only the salary and Blue Card columns from each posting's text."""
+    fields = (
+        "salary_min",
+        "salary_max",
+        "salary_currency",
+        "salary_period",
+        "annual_salary_min_eur",
+        "annual_salary_max_eur",
+        "salary_stated",
+        "bluecard_status",
+    )
+    async with session_scope() as session:
+        q = select(Posting).where(Posting.extraction_status == "ok")
+        rows = (await session.execute(q)).scalars().all()
+        changed = 0
+        for p in rows:
+            derived = derive_fields(
+                {}, p.raw_text, (p.published_at or dt.date.today()).year, p.source_remote_flag
+            )
+            values = {k: derived[k] for k in fields}
+            if any(getattr(p, k) != v for k, v in values.items()):
+                await session.execute(update(Posting).where(Posting.id == p.id).values(**values))
+                changed += 1
+        await session.commit()
+    return {"checked": len(rows), "changed": changed}
 
 
 async def run_rules_extraction(limit: int | None = None, refresh: bool = False) -> dict[str, Any]:

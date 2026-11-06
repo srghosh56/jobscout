@@ -13,7 +13,7 @@ PNPM := cd frontend && corepack pnpm
 COMPOSE := docker compose -f deploy/docker-compose.yml --env-file .env
 GITLEAKS_VERSION := 8.30.1
 
-PHONY_EXTRA := golden dataset-stats eval-report db-up
+PHONY_EXTRA := golden dataset-stats eval-report db-up salary-refresh
 .PHONY: help setup gitleaks-install up down logs migrate seed ingest extract embed expiry insights \
 	serve web build-web openapi test test-backend test-frontend coverage lint lint-backend lint-frontend \
 	gitleaks eval-smoke eval-full eval-record ablations retrieval-bench scope-bench route-bench \
@@ -56,6 +56,10 @@ ingest: ## fetch postings from both APIs (polite, cached) and upsert
 
 extract: ## LLM extraction (JSON-schema mode) for postings without extraction
 	$(JS) extract
+
+salary-refresh: ## recompute salary and Blue Card columns from posting text, then insights
+	$(JS) extract --salaries-only
+	$(JS) insights
 
 embed: ## embeddings for postings without vectors
 	$(JS) embed
