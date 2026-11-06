@@ -291,6 +291,42 @@ async def test_sql_hint_is_given_only_once(corpus: None) -> None:
     assert "once more" not in str(s.router_inputs[2][-1].content)
 
 
+@pytest.mark.parametrize(
+    ("text", "language"),
+    [
+        ("Vergleiche zwei Cloud-Stellen in Frankfurt.", "de"),
+        ("Java-Entwickler in Stuttgart", "de"),
+        ("Erzähl mir etwas über Berlin.", "de"),
+        ("Profile: English CV with Python skills. Welche Stellen passen zu mir?", "de"),
+        ("Rust developer jobs", "en"),
+        ("Jobs in München for a data engineer", "en"),
+        ("Mein Profil: Python. Which jobs fit me best?", "en"),
+    ],
+)
+def test_language_comes_from_the_request(text: str, language: str) -> None:
+    assert prompts.detect_user_language(text) == language
+
+
+async def test_german_question_answered_in_english_is_rewritten(corpus: None) -> None:
+    s = Script(
+        [[call("sql_query", {"sql": "SELECT count(*) AS n FROM v_postings LIMIT 1"})]],
+        ["There are jobs for you and the team.", "Es gibt Stellen für dich und das Team."],
+    )
+    out = await agent_for(s).ainvoke("Wie viele Stellen gibt es?")
+    assert out["answer"].startswith("Es gibt") and out["warnings"] == []
+    assert "not written in German" in str(s.composer_inputs[1][0].content)
+
+
+async def test_search_with_two_cities_and_invented_filters_runs(corpus: None) -> None:
+    filters = {"city": ["Berlin", "München"], "min_years_experience": 3, "german_level": "B1"}
+    s = Script([[call("search_postings", {"filters": filters})]], ["Done."])
+    out = await agent_for(s).ainvoke("Machine learning jobs in Berlin or Munich?")
+    result = out["tool_results"][0]
+    assert "error" not in result["result"]
+    assert result["args"]["query"] == "Machine learning jobs in Berlin or Munich?"
+    assert result["args"]["filters"]["max_years"] == 3
+
+
 def test_normal_sentences_about_the_data_stay() -> None:
     text = "Based on the data retrieved from our job postings database, there are 75 postings."
     assert clean_draft(text) == text

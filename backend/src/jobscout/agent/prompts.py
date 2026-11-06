@@ -7,15 +7,23 @@ import re
 LANG_NAMES = {"en": "English", "de": "German"}
 
 _DE = re.compile(
-    r"\b(und|der|die|das|ich|welche|stellen|jobs? in|gibt es|mit|für|nicht|wie viele|zeige?)\b",
+    r"[äöüß]|\b(und|der|die|das|ich|welche[rs]?|gibt es|mit|für|nicht|wie viele|zeige?|im|zu|von|"
+    r"einen?|eine|mir|mein\w*|gib|finde|suche|bitte|zwei|bereich|vergleiche|"
+    r"\w*stellen?|\w*entwickler\w*|\w*berater\w*|\w*ingenieur\w*|gehalt|lebenslauf)\b",
     re.I,
 )
-_EN = re.compile(r"\b(the|and|which|what|how many|show|jobs?|with|for|in|me|is|are)\b", re.I)
+_EN = re.compile(r"\b(the|and|which|what|how many|show|jobs?|with|for|me|is|are)\b", re.I)
+
+
+def detect_text_language(text: str) -> str:
+    de, en = len(_DE.findall(text)), len(_EN.findall(text))
+    return "de" if de > en else "en"
 
 
 def detect_user_language(text: str) -> str:
-    de, en = len(_DE.findall(text)), len(_EN.findall(text))
-    return "de" if de > en else "en"
+    """The language of the request itself: a pasted CV can be in another language."""
+    sentences = re.split(r"(?<=[.!?:])\s+", text.strip())
+    return detect_text_language(sentences[-1] if sentences else text)
 
 
 ROUTER_SYSTEM = """You are JobScout, an assistant that helps international candidates find skilled jobs in Germany using a database of job postings.

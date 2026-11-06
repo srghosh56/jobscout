@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from jobscout.agent.citations import ID_RE
 from jobscout.cv.profile import extract_profile
 from jobscout.logging import get_logger
+from jobscout.retrieval.filters import SearchFilters
 from jobscout.tools.schemas import CandidateProfile
 
 log = get_logger(__name__)
@@ -67,10 +68,48 @@ async def repair_profile(args: dict[str, Any], question: str) -> dict[str, Any]:
     return {**args, "profile": profile.model_dump(mode="json")}
 
 
+# Filter names small models invent, mapped to the real one.
+FILTER_ALIASES = {
+    "min_years_experience": "max_years",
+    "years_experience": "max_years",
+    "min_years": "max_years",
+    "required_skills": "skills",
+    "cities": "city",
+    "location": "city",
+}
+
+
+def repair_filters(raw: Any) -> dict[str, Any] | None:
+    """Keeps every usable filter: renames known mistakes and drops the rest, so one bad
+    filter does not lose the whole search."""
+    if not isinstance(raw, dict):
+        return None
+    known = SearchFilters.model_fields
+    filters: dict[str, Any] = {FILTER_ALIASES.get(str(k), str(k)): v for k, v in raw.items()}
+    filters = {k: v for k, v in filters.items() if k in known}
+    try:
+        SearchFilters.model_validate(filters)
+    except ValidationError as exc:
+        for key in {str(e["loc"][0]) for e in exc.errors() if e["loc"]}:
+            filters.pop(key, None)
+    return filters or None
+
+
+def repair_search(args: dict[str, Any], question: str) -> dict[str, Any]:
+    """A search needs a query; without one, the user's question is the query."""
+    fixed = {k: v for k, v in args.items() if k != "filters"}
+    if not str(fixed.get("query") or "").strip():
+        fixed["query"] = question[:500]
+    filters = repair_filters(args.get("filters"))
+    return {**fixed, "filters": filters} if filters else fixed
+
+
 async def repair_args(
     name: str, args: dict[str, Any], known: list[str], question: str
 ) -> dict[str, Any]:
     fixed = repair_ids(name, args, known, question)
+    if name == "match_cv" and "filters" in fixed:
+        fixed = {**fixed, "filters": repair_filters(fixed["filters"])}
     if name in PROFILE_TOOLS:
         fixed = await repair_profile(fixed, question)
     return fixed

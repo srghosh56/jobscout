@@ -51,7 +51,12 @@ from jobscout.agent.citations import (
     strip_invalid,
 )
 from jobscout.agent.recovery import recover_tool_calls
-from jobscout.agent.repair import DEPENDENT_TOOLS, ordered_ids, repair_args
+from jobscout.agent.repair import (
+    DEPENDENT_TOOLS,
+    ordered_ids,
+    repair_args,
+    repair_search,
+)
 from jobscout.agent.route import is_search_only
 from jobscout.agent.scope import check_scope, refusal_message
 from jobscout.llm import get_chat_model, usage_of
@@ -214,7 +219,12 @@ def build_graph(
             seen.add(key)
             calls.append(call)
         executed, skipped = calls[:budget], calls[budget:]
-        used_args = {id(c): c.get("args") or {} for c in executed}
+        used_args = {
+            id(c): repair_search(c.get("args") or {}, state["question"])
+            if c["name"] == "search_postings"
+            else c.get("args") or {}
+            for c in executed
+        }
 
         async def one(call: Any) -> tuple[Any, dict[str, Any], float]:
             write(
@@ -331,7 +341,10 @@ def build_graph(
         )
         msgs = [
             SystemMessage(prompts.COMPOSER_SYSTEM.format(language=lang, extra=extra)),
-            HumanMessage(f"Question: {state['question']}\n\nTool results:\n{context}"),
+            HumanMessage(
+                f"Question: {state['question']}\n\nTool results:\n{context}\n\n"
+                f"Write the whole answer in {lang}."
+            ),
         ]
         with span("agent.composer", regenerate=bool(state.get("invalid_citations"))):
             ai = await chat.ainvoke(msgs)
@@ -357,6 +370,14 @@ def build_graph(
             {"cited": len(check.cited), "invalid": len(check.invalid)},
         ]
         problems = draft_problems(draft, evidence_text(state)) if check.ok else []
+        wrong_language = (
+            check.ok
+            and state.get("language") == "de"
+            and prompts.detect_text_language(draft) != "de"
+        )
+        unverified = bool(problems)
+        if wrong_language:
+            problems.append("it was not written in German")
         if problems and attempts < 2:
             write({"type": "reset", "reason": "answer check", "problems": problems})
             return {
@@ -365,7 +386,7 @@ def build_graph(
                 "problems": problems,
                 "citation_history": history,
             }
-        if problems:
+        if unverified:
             warnings.append("Some numbers could not be verified. Please double-check them.")
         if check.ok:
             CITATION_CHECKS.labels(outcome="ok" if attempts == 1 else "ok_after_regen").inc()

@@ -45,6 +45,13 @@ async def test_dense_and_hybrid_modes(corpus: None) -> None:
     assert "«" in hybrid[0].snippet or hybrid[0].snippet
 
 
+async def test_several_cities_match_any_of_them(corpus: None) -> None:
+    one = set(await ids("machine learning", city="Munich"))
+    both = set(await ids("machine learning", city="Munich, Berlin"))
+    assert one and one < both
+    assert SearchFilters(city=["Berlin", "München"]).city == "Berlin, München"
+
+
 async def test_filters_city_variants_years_skills(corpus: None) -> None:
     assert set(await ids("machine learning", city="Munich")) == {"an-0000000001", "an-0000000002"}
     got = await ids("machine learning", city="München", max_years=3)
