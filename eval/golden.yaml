@@ -344,19 +344,21 @@ questions:
     rows:
     - - 153
 - id: sql-21
+  approved: true
   category: sql
   lang: de
   question: Wie viele Stellen in Frankfurt am Main verlangen Python?
   expected_tools:
   - sql_query
-  reference_sql: SELECT count(DISTINCT posting_id) AS n FROM v_posting_skills WHERE is_active AND city = 'Frankfurt am Main'
+  reference_sql: SELECT count(DISTINCT posting_id) AS n FROM v_posting_skills WHERE is_active AND kind = 'required' AND city = 'Frankfurt am Main'
     AND skill = 'python' LIMIT 1
   expected_result:
     columns:
     - n
     rows:
-    - - 25
+    - - 24
 - id: sql-22
+  approved: true
   category: sql
   lang: de
   question: Wie viele Junior-Stellen gibt es in Berlin?
@@ -369,6 +371,7 @@ questions:
     rows:
     - - 17
 - id: sql-23
+  approved: true
   category: sql
   lang: de
   question: Wie viele aktive Stellen erwähnen Visa-Unterstützung?
@@ -381,6 +384,7 @@ questions:
     rows:
     - - 42
 - id: sql-24
+  approved: true
   category: sql
   lang: de
   question: Wie viele Stellen pro Berufsfeld gibt es? Zeige die Top 5.
@@ -404,6 +408,7 @@ questions:
     - - sales_marketing
       - 208
 - id: sql-25
+  approved: true
   category: sql
   lang: de
   question: Wie viele Stellen in München nennen ein Gehalt?
@@ -416,6 +421,7 @@ questions:
     rows:
     - - 78
 - id: sem-01
+  approved: true
   category: semantic
   lang: en
   question: Which machine learning roles in Munich mention RAG?
@@ -437,6 +443,7 @@ questions:
   - ba-dd76043d67
   label_method: reference_predicate
 - id: sem-02
+  approved: true
   category: semantic
   lang: en
   question: Jobs building agents with LangGraph
@@ -466,6 +473,7 @@ questions:
   - ba-ff5d6caa55
   label_method: reference_predicate
 - id: sem-03
+  approved: true
   category: semantic
   lang: en
   question: Computer vision engineer positions
@@ -478,6 +486,7 @@ questions:
   - ba-e286a55301
   label_method: reference_predicate
 - id: sem-04
+  approved: true
   category: semantic
   lang: en
   question: MLOps engineer jobs
@@ -489,6 +498,7 @@ questions:
   - an-f2600d78f9
   label_method: reference_predicate
 - id: sem-05
+  approved: true
   category: semantic
   lang: en
   question: Data engineer roles using Spark and Kafka

@@ -131,7 +131,7 @@ SQL_Q: list[tuple[str, str, str]] = [
     (
         "de",
         "Wie viele Stellen in Frankfurt am Main verlangen Python?",
-        "SELECT count(DISTINCT posting_id) AS n FROM v_posting_skills WHERE is_active AND city = 'Frankfurt am Main' AND skill = 'python' LIMIT 1",
+        "SELECT count(DISTINCT posting_id) AS n FROM v_posting_skills WHERE is_active AND kind = 'required' AND city = 'Frankfurt am Main' AND skill = 'python' LIMIT 1",
     ),
     (
         "de",
