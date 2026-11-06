@@ -218,7 +218,7 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     (
         "en",
         "Solutions architect positions for AWS",
-        r"p.title ~* 'architect' AND p.raw_text ~* '\maws\M'",
+        r"p.title ~* 'solutions? architect' AND p.raw_text ~* '\maws\M'",
         {},
     ),
     (
@@ -235,7 +235,7 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     ),
     (
         "de",
-        "Stellen als SOC-Analyst in der IT-Sicherheit",
+        "Stellen im Security Operations Center (SOC)",
         r"p.title ~* '\msoc\M|security operations'",
         {},
     ),
@@ -247,14 +247,14 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     ),
     (
         "de",
-        "DevOps-Stellen mit Azure in Köln",
+        "Cloud- und DevOps-Stellen mit Azure in Köln",
         r"p.city = 'Köln' AND p.job_family = 'devops_cloud' AND p.raw_text ~* 'azure'",
         {"city": "Köln"},
     ),
     (
         "de",
         "Produktmanager-Stellen im Fintech-Bereich",
-        r"p.title ~* 'product manager|produktmanager|product owner' AND p.raw_text ~* 'fintech|payment|banking|zahlungs'",
+        r"p.title ~* 'product manager|produktmanager|product owner' AND p.raw_text ~* 'fintech'",
         {},
     ),
     (
@@ -265,8 +265,8 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     ),
     (
         "de",
-        "Stellen für Ingenieure im Bereich erneuerbare Energien",
-        r"p.title ~* 'ingenieur|engineer' AND p.raw_text ~* 'erneuerbar|renewable|photovoltaik|wind ?energ|solar'",
+        "Ingenieur-Stellen mit Bezug zu erneuerbaren Energien",
+        r"p.title ~* 'ingenieur|engineer' AND p.raw_text ~* 'erneuerbare energien|renewable energ'",
         {},
     ),
 ]

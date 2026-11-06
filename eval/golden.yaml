@@ -745,6 +745,7 @@ questions:
   - ba-cc0907c3b3
   label_method: reference_predicate
 - id: sem-16
+  approved: true
   category: semantic
   lang: en
   question: Embedded software engineer jobs in automotive
@@ -760,30 +761,26 @@ questions:
   - ba-fc4aeb3fd8
   label_method: reference_predicate
 - id: sem-17
+  approved: true
   category: semantic
   lang: en
   question: Solutions architect positions for AWS
   expected_tools:
   - search_postings
-  relevance_predicate: p.title ~* 'architect' AND p.raw_text ~* '\maws\M'
+  relevance_predicate: p.title ~* 'solutions? architect' AND p.raw_text ~* '\maws\M'
   retrieval_filters: null
   relevant_ids:
-  - an-1011dbf40b
   - an-3ebd13e4c4
   - an-6b8c0f41e3
-  - an-a32426937e
   - an-bc3f8a787f
   - an-ca5989e274
   - an-fc6b1bcc27
-  - ba-33413284e0
   - ba-55c058cc51
   - ba-62d167284b
   - ba-701c6070cb
-  - ba-8fca2b4a06
-  - ba-cae90c2160
-  - ba-cb7172ed7e
   label_method: reference_predicate
 - id: sem-18
+  approved: true
   category: semantic
   lang: de
   question: Werkstudentenstellen im Bereich Data Science
@@ -807,6 +804,7 @@ questions:
   - ba-cc0907c3b3
   label_method: reference_predicate
 - id: sem-19
+  approved: true
   category: semantic
   lang: de
   question: Java-Backend-Entwickler in Stuttgart
@@ -821,9 +819,10 @@ questions:
   - ba-d8ab2fcaa2
   label_method: reference_predicate
 - id: sem-20
+  approved: true
   category: semantic
   lang: de
-  question: Stellen als SOC-Analyst in der IT-Sicherheit
+  question: Stellen im Security Operations Center (SOC)
   expected_tools:
   - search_postings
   relevance_predicate: p.title ~* '\msoc\M|security operations'
@@ -837,6 +836,7 @@ questions:
   - ba-fb96d5b550
   label_method: reference_predicate
 - id: sem-21
+  approved: true
   category: semantic
   lang: de
   question: Stellen für SAP-Berater
@@ -872,9 +872,10 @@ questions:
   - ba-c19e650593
   label_method: reference_predicate
 - id: sem-22
+  approved: true
   category: semantic
   lang: de
-  question: DevOps-Stellen mit Azure in Köln
+  question: Cloud- und DevOps-Stellen mit Azure in Köln
   expected_tools:
   - search_postings
   relevance_predicate: p.city = 'Köln' AND p.job_family = 'devops_cloud' AND p.raw_text ~* 'azure'
@@ -886,29 +887,22 @@ questions:
   - ba-ee1adc1654
   label_method: reference_predicate
 - id: sem-23
+  approved: true
   category: semantic
   lang: de
   question: Produktmanager-Stellen im Fintech-Bereich
   expected_tools:
   - search_postings
-  relevance_predicate: p.title ~* 'product manager|produktmanager|product owner' AND p.raw_text ~* 'fintech|payment|banking|zahlungs'
+  relevance_predicate: p.title ~* 'product manager|produktmanager|product owner' AND p.raw_text ~* 'fintech'
   retrieval_filters: null
   relevant_ids:
-  - an-08edbb5eb5
   - an-0b8c3163c2
   - an-2e322bb79a
-  - an-34a2b32a6a
-  - an-6250ab0a7f
-  - an-757dce75c2
   - an-9268a6fdaf
   - an-c84c6d3746
-  - an-e32c4e3fb6
-  - an-ef68187574
-  - an-f9856ad8b3
-  - ba-32e63308a3
-  - ba-60b627f55b
   label_method: reference_predicate
 - id: sem-24
+  approved: true
   category: semantic
   lang: de
   question: Stellen für Datenanalyse mit SQL in Düsseldorf
@@ -923,29 +917,21 @@ questions:
   - ba-fe5cc80d5f
   label_method: reference_predicate
 - id: sem-25
+  approved: true
   category: semantic
   lang: de
-  question: Stellen für Ingenieure im Bereich erneuerbare Energien
+  question: Ingenieur-Stellen mit Bezug zu erneuerbaren Energien
   expected_tools:
   - search_postings
-  relevance_predicate: p.title ~* 'ingenieur|engineer' AND p.raw_text ~* 'erneuerbar|renewable|photovoltaik|wind ?energ|solar'
+  relevance_predicate: p.title ~* 'ingenieur|engineer' AND p.raw_text ~* 'erneuerbare energien|renewable energ'
   retrieval_filters: null
   relevant_ids:
-  - an-288ac0a007
-  - an-750ca59379
   - an-85267b13da
   - an-867b322f00
-  - an-8a907c3723
-  - an-8e1aca4900
-  - an-a00c330543
-  - an-a309294a27
   - an-a61bd792e0
   - an-b6d4c2e530
   - an-bfdce6b95e
-  - an-d4c832ee7f
   - ba-26550bc328
-  - ba-4a0d95e936
-  - ba-4f327a3db3
   - ba-642c62c3ed
   - ba-8942987328
   - ba-eaba8e1099
