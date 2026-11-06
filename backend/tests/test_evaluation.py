@@ -10,6 +10,7 @@ from langchain_core.runnables import RunnableLambda
 from jobscout.agent.graph import Agent
 from jobscout.evaluation import runner
 from jobscout.evaluation.cassette import Cassette, CassetteChatModel, CassetteMiss
+from jobscout.evaluation.golden import carry_approvals
 from jobscout.evaluation.judges import judge
 from jobscout.llm import FakeChatModel
 from tests.test_agent import Script, call
@@ -144,3 +145,18 @@ async def test_cassette_record_replay_roundtrip(tmp_path: Path) -> None:
     assert so2["parsed"] == so["parsed"]
     with pytest.raises(CassetteMiss):
         await r.ainvoke("one too many")
+
+
+def test_approvals_survive_a_new_answer_but_not_a_new_question() -> None:
+    old = [
+        {"id": "a", "question": "How many?", "reference_sql": "SELECT 1", "approved": True},
+        {"id": "b", "question": "Which?", "reference_sql": "SELECT 2", "approved": True},
+        {"id": "c", "question": "Where?", "reference_sql": "SELECT 3"},
+    ]
+    new = [
+        {"id": "a", "question": "How many?", "reference_sql": "SELECT 1", "expected": 7},
+        {"id": "b", "question": "Which cities?", "reference_sql": "SELECT 2"},
+        {"id": "c", "question": "Where?", "reference_sql": "SELECT 3"},
+    ]
+    got = {q["id"]: q.get("approved") for q in carry_approvals(new, old)}
+    assert got == {"a": True, "b": None, "c": None}

@@ -20,10 +20,11 @@ import yaml
 from sqlalchemy import text
 
 from jobscout.db.engine import session_scope
+from jobscout.evaluation.golden import carry_approvals
 from jobscout.tools.impl import run_tool
 
 ROOT = Path(__file__).resolve().parent
-VERSION = 1
+VERSION = 2
 
 SQL_Q: list[tuple[str, str, str]] = [
     # (id-suffix/lang, question, reference SQL)
@@ -104,8 +105,8 @@ SQL_Q: list[tuple[str, str, str]] = [
     ),
     (
         "en",
-        "Which 5 companies have the most active postings?",
-        "SELECT company, count(*) AS n FROM v_postings WHERE is_active AND company IS NOT NULL GROUP BY company ORDER BY n DESC LIMIT 5",
+        "Which 4 companies have the most active postings?",
+        "SELECT company, count(*) AS n FROM v_postings WHERE is_active AND company IS NOT NULL GROUP BY company ORDER BY n DESC LIMIT 4",
     ),
     (
         "en",
@@ -124,13 +125,13 @@ SQL_Q: list[tuple[str, str, str]] = [
     ),
     (
         "de",
-        "Wie viele Praktikumsstellen (Seniorität intern) gibt es?",
+        "Wie viele Praktikums- und Werkstudentenstellen gibt es?",
         "SELECT count(*) AS n FROM v_postings WHERE is_active AND seniority = 'intern' LIMIT 1",
     ),
     (
         "de",
         "Wie viele Stellen in Frankfurt am Main verlangen Python?",
-        "SELECT count(DISTINCT posting_id) AS n FROM v_posting_skills WHERE is_active AND city = 'Frankfurt am Main' AND skill = 'python' LIMIT 1",
+        "SELECT count(DISTINCT posting_id) AS n FROM v_posting_skills WHERE is_active AND kind = 'required' AND city = 'Frankfurt am Main' AND skill = 'python' LIMIT 1",
     ),
     (
         "de",
@@ -166,7 +167,7 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     (
         "en",
         "Computer vision engineer positions",
-        r"p.title ~* 'computer vision|vision engineer|bildverarbeitung'",
+        r"p.title ~* 'computer vision|machine.?vision|vision engineer|bildverarbeitung'",
         {},
     ),
     ("en", "MLOps engineer jobs", r"p.title ~* 'mlops'", {}),
@@ -184,15 +185,22 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     ),
     ("en", "Penetration testing jobs", r"p.title ~* 'pentest|penetration'", {}),
     ("en", "iOS or Swift mobile developer positions", r"p.title ~* '\mios\M|swift'", {}),
-    ("en", "Robotics software engineer jobs", r"p.title ~* 'robot'", {}),
+    ("en", "Jobs in robotics", r"p.title ~* 'robot(?!ron)'", {}),
     ("en", "Bioinformatics positions", r"p.title ~* 'bioinformati'", {}),
     ("en", "Site reliability engineer jobs", r"p.title ~* 'site reliability|\msre\M'", {}),
     ("en", "Rust developer jobs", r"p.title ~* '\mrust\M'", {}),
-    ("en", "Jobs for a Go (Golang) backend engineer", r"p.title ~* '\mgo\M|golang'", {}),
+    (
+        "en",
+        "Jobs for a Go (Golang) backend engineer",
+        r"(p.title ~* '\mgo\M|golang' AND p.title !~* 'go-to') OR p.raw_text ~* 'golang'",
+        {},
+    ),
     (
         "en",
         "Positions involving large language models in Berlin",
-        r"p.city = 'Berlin' AND p.title ~* '\mllm|genai|generative ai|gen ai'",
+        r"p.city = 'Berlin' AND (p.title ~* '\mllm|genai|generative ai|gen"
+        r" ai' OR (p.job_family IN ('data_ml', 'software_engineering', 'de"
+        r"vops_cloud') AND p.raw_text ~* '\mllms?\M|genai|generative ai|gen ai|large language model'))",
         {"city": "Berlin"},
     ),
     (
@@ -210,7 +218,7 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     (
         "en",
         "Solutions architect positions for AWS",
-        r"p.title ~* 'architect' AND p.raw_text ~* '\maws\M'",
+        r"p.title ~* 'solutions? architect' AND p.raw_text ~* '\maws\M'",
         {},
     ),
     (
@@ -227,7 +235,7 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     ),
     (
         "de",
-        "Stellen als SOC-Analyst in der IT-Sicherheit",
+        "Stellen im Security Operations Center (SOC)",
         r"p.title ~* '\msoc\M|security operations'",
         {},
     ),
@@ -239,14 +247,14 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     ),
     (
         "de",
-        "DevOps-Stellen mit Azure in Köln",
+        "Cloud- und DevOps-Stellen mit Azure in Köln",
         r"p.city = 'Köln' AND p.job_family = 'devops_cloud' AND p.raw_text ~* 'azure'",
         {"city": "Köln"},
     ),
     (
         "de",
         "Produktmanager-Stellen im Fintech-Bereich",
-        r"p.title ~* 'product manager|produktmanager|product owner' AND p.raw_text ~* 'fintech|payment|banking|zahlungs'",
+        r"p.title ~* 'product manager|produktmanager|product owner' AND p.raw_text ~* 'fintech'",
         {},
     ),
     (
@@ -257,8 +265,8 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     ),
     (
         "de",
-        "Stellen für Ingenieure im Bereich erneuerbare Energien",
-        r"p.title ~* 'ingenieur|engineer' AND p.raw_text ~* 'erneuerbar|renewable|photovoltaik|wind ?energ|solar'",
+        "Ingenieur-Stellen mit Bezug zu erneuerbaren Energien",
+        r"p.title ~* 'ingenieur|engineer' AND p.raw_text ~* 'erneuerbare energien|renewable energ'",
         {},
     ),
 ]
@@ -276,7 +284,7 @@ MULTI_Q: list[tuple[str, str, list[str]]] = [
     ),
     (
         "en",
-        "Compare the two data engineering postings in Berlin with the highest stated minimum salary.",
+        "Compare the two data or machine learning postings in Berlin with the highest stated minimum salary.",
         ["sql_query", "compare_postings"],
     ),
     (
@@ -291,12 +299,12 @@ MULTI_Q: list[tuple[str, str, list[str]]] = [
     ),
     (
         "en",
-        "Is there any posting in Hamburg that mentions visa sponsorship? If so, does its salary meet the Blue Card threshold?",
+        "Is there any posting in Munich that mentions visa sponsorship? If so, does its salary meet the Blue Card threshold?",
         ["search_postings", "bluecard_check"],
     ),
     (
         "en",
-        "List junior software jobs in Berlin that do not require German, and compare the first two.",
+        "List junior software jobs in Germany that do not require German, and compare the first two.",
         ["search_postings", "compare_postings"],
     ),
     (
@@ -306,7 +314,7 @@ MULTI_Q: list[tuple[str, str, list[str]]] = [
     ),
     (
         "en",
-        "Find me a remote Python job and check its German requirements.",
+        "Find me a remote Python job and tell me what the full ad says about German.",
         ["search_postings", "get_posting"],
     ),
     (
@@ -501,11 +509,14 @@ async def build() -> dict[str, Any]:
 
 def main() -> None:
     data = asyncio.run(build())
+    path = ROOT / "golden.yaml"
+    old = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    data["questions"] = carry_approvals(data["questions"], old.get("questions", []))
     cats: dict[str, int] = {}
     for q in data["questions"]:
         cats[q["category"]] = cats.get(q["category"], 0) + 1
     de = sum(q["lang"] == "de" for q in data["questions"])
-    (ROOT / "golden.yaml").write_text(
+    path.write_text(
         "# Golden evaluation set. Generated by eval/build_golden.py.\n"
         + yaml.safe_dump(data, allow_unicode=True, sort_keys=False, width=120),
         encoding="utf-8",
