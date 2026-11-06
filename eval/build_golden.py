@@ -24,7 +24,7 @@ from jobscout.evaluation.golden import carry_approvals
 from jobscout.tools.impl import run_tool
 
 ROOT = Path(__file__).resolve().parent
-VERSION = 1
+VERSION = 2
 
 SQL_Q: list[tuple[str, str, str]] = [
     # (id-suffix/lang, question, reference SQL)
