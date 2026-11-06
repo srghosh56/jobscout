@@ -33,3 +33,10 @@ def test_percentile_mean_and_result_set_match() -> None:
     assert m.result_set_match([["Berlin", 3]], [["berlin ", 3]])
     assert m.result_set_match([[1.001], [2]], [[2], [1.0]])
     assert not m.result_set_match([[1]], [[1], [1]])
+
+
+def test_recall_at_k_is_capped_at_k() -> None:
+    relevant = {f"p{i}" for i in range(50)}
+    assert m.recall_at_k([f"p{i}" for i in range(5)], relevant, 5) == 1.0
+    assert m.recall_at_k(["p0", "x", "p1", "y", "z"], relevant, 5) == 0.4
+    assert m.recall_at_k(["p0", "x"], {"p0", "p1"}, 5) == 0.5

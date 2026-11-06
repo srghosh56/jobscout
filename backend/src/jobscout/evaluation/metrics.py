@@ -7,10 +7,13 @@ from collections.abc import Hashable, Sequence
 
 
 def recall_at_k(ranked: Sequence[Hashable], relevant: set[Hashable], k: int) -> float:
-    """|relevant ∩ top-k| / |relevant| (0 if there are no relevant items)."""
+    """|relevant ∩ top-k| / min(|relevant|, k), 0 if there are no relevant items.
+
+    Capped at k, so a perfect top-k scores 1.0 however long the relevant list is. Dividing by
+    the full list would limit a 50-item list to 0.1, whatever the search returned."""
     if not relevant:
         return 0.0
-    return len(set(ranked[:k]) & relevant) / len(relevant)
+    return len(set(ranked[:k]) & relevant) / min(len(relevant), k)
 
 
 def reciprocal_rank(ranked: Sequence[Hashable], relevant: set[Hashable]) -> float:
