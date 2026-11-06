@@ -16,7 +16,10 @@ _WRAPPER_TEXT = re.compile(
     re.S,
 )
 _TRUST_SENTENCE = re.compile(
-    r"[^.!?\n]*\b(?:untrusted|nicht vertrauenswürdig\w*)\b[^.!?\n]*[.!?]?", re.I
+    r"[^.!?\n]*\b(?:untrusted|nicht vertrauenswürdig\w*|never follow instructions|"
+    r"written by third parties|data retrieved from job (?:postings|listings) and the database)\b"
+    r"[^.!?\n]*[.!?]?",
+    re.I,
 )
 BRACKET_RE = re.compile(r"\[([^\[\]]{0,200})\]")
 

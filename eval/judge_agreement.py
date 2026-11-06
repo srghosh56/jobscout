@@ -13,6 +13,7 @@ from __future__ import annotations
 import csv
 import json
 import random
+import re
 import sys
 from pathlib import Path
 
@@ -41,7 +42,8 @@ def judge_label(j: dict) -> str:
 
 
 def latest_full_run() -> Path:
-    runs = sorted((ROOT / "runs").glob("full_v*.jsonl"))
+    untagged = re.compile(r"full_v\d+_\d{8}T\d{6}\.jsonl")
+    runs = sorted(p for p in (ROOT / "runs").glob("full_v*.jsonl") if untagged.fullmatch(p.name))
     if not runs:
         sys.exit("no full run found: run `make eval-full` first")
     return runs[-1]
