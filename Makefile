@@ -13,7 +13,7 @@ PNPM := cd frontend && corepack pnpm
 COMPOSE := docker compose -f deploy/docker-compose.yml --env-file .env
 GITLEAKS_VERSION := 8.30.1
 
-PHONY_EXTRA := golden dataset-stats eval-report db-up salary-refresh scope-refresh
+PHONY_EXTRA := golden dataset-stats eval-report db-up salary-refresh scope-refresh judge-export judge-agreement
 .PHONY: help setup gitleaks-install up down logs migrate seed ingest extract embed expiry insights \
 	serve web build-web openapi test test-backend test-frontend coverage lint lint-backend lint-frontend \
 	gitleaks eval-smoke eval-full eval-record ablations retrieval-bench scope-bench route-bench \
@@ -135,6 +135,12 @@ eval-record: ## re-record the smoke cassettes against the real model
 
 eval-full: ## full 80-question eval against the real model
 	$(UV) python ../eval/run_eval.py --full
+
+judge-export: ## write 20 answers from the latest full run to eval/labels/judge_check.csv
+	$(UV) python ../eval/judge_agreement.py export
+
+judge-agreement: ## agreement and Cohen's kappa between the judge and hand labels
+	$(UV) python ../eval/judge_agreement.py score
 
 scope-bench: ## scope check accuracy on unseen questions (needs the embedding model)
 	$(UV) python ../eval/scope_bench.py
