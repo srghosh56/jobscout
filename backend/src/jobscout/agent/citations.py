@@ -21,6 +21,9 @@ _TRUST_SENTENCE = re.compile(
     r"[^.!?\n]*[.!?]?",
     re.I,
 )
+_SQL_LINE = re.compile(r"^[^\S\n]*select\b.*\bfrom\b.*$", re.I | re.M)
+_FENCED_SQL = re.compile(r"```(?:sql)?\s*select\b.*?```", re.I | re.S)
+_LARGE_NUMBER = re.compile(r"(?<![\w.,-])(\d{1,3}(?:[.,\s]\d{3})+|\d{4,})(?:[.,]\d{1,2})?(?![\d-])")
 BRACKET_RE = re.compile(r"\[([^\[\]]{0,200})\]")
 
 
@@ -74,6 +77,36 @@ def strip_invalid(answer: str, invalid: Iterable[str]) -> str:
     for pid in invalid:
         answer = answer.replace(pid, "unverified")
     return answer
+
+
+def _whole_numbers(text: str) -> set[int]:
+    numbers = {int(re.sub(r"\D", "", m.group(1))) for m in _LARGE_NUMBER.finditer(text)}
+    return {n for n in numbers if not 1900 <= n <= 2100}
+
+
+def unsupported_numbers(answer: str, sources: str) -> list[int]:
+    """Numbers of 1,000 or more in the answer that appear in neither the tool results nor
+    the question. Years and posting IDs are ignored."""
+    return sorted(_whole_numbers(ID_RE.sub("", answer)) - _whole_numbers(sources))
+
+
+def contains_sql(text: str) -> bool:
+    return bool(_FENCED_SQL.search(text) or _SQL_LINE.search(text))
+
+
+def remove_sql(text: str) -> str:
+    return _SQL_LINE.sub("", _FENCED_SQL.sub("", text)).strip()
+
+
+def draft_problems(answer: str, sources: str) -> list[str]:
+    """What the answer check found, written for the composer's rewrite."""
+    problems = []
+    numbers = unsupported_numbers(answer, sources)
+    if numbers:
+        problems.append("numbers not in the tool results: " + ", ".join(map(str, numbers)))
+    if contains_sql(answer):
+        problems.append("it showed SQL to the user")
+    return problems
 
 
 def clean_draft(text: str) -> str:

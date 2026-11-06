@@ -15,8 +15,11 @@ from jobscout.agent.citations import (
     check_citations,
     cited_ids,
     clean_draft,
+    contains_sql,
     ids_in,
+    remove_sql,
     strip_invalid,
+    unsupported_numbers,
 )
 from jobscout.agent.graph import Agent, _inline_refs, build_graph, tool_definitions, turn_input
 from jobscout.agent.scope import ScopeDecision, refusal_message
@@ -214,6 +217,78 @@ def test_internal_wording_is_removed_from_answers() -> None:
 )
 def test_each_leaked_sentence_is_removed_on_its_own(leak: str) -> None:
     assert clean_draft(f"Two jobs found. {leak} Good luck.") == "Two jobs found. Good luck."
+
+
+@pytest.mark.parametrize(
+    ("answer", "expected"),
+    [
+        ("The threshold is 54,000 euros.", [54000]),
+        ("Es sind 54.000 Euro.", [54000]),
+        ("There are 2,442 postings.", []),
+        ("There are 2442 postings.", []),
+        ("Gehalt 2.442,50 Euro.", []),
+        ("Only 433 jobs, founded in 2026.", []),
+        ("See [ba-3776e09ea6].", []),
+        ("The salary is 72,000 to 85,000 EUR.", []),
+    ],
+)
+def test_unsupported_numbers(answer: str, expected: list[int]) -> None:
+    sources = '{"n": 2442, "salary": "72,000–85,000 EUR/year"}'
+    assert unsupported_numbers(answer, sources) == expected
+
+
+def test_sql_is_detected_and_removed() -> None:
+    fenced = "Try this:\n```sql\nSELECT count(*) FROM v_postings;\n```\nThanks."
+    plain = "Try this:\nSELECT count(*) FROM v_postings\nThanks."
+    assert contains_sql(fenced) and contains_sql(plain)
+    assert "SELECT" not in remove_sql(fenced) and "SELECT" not in remove_sql(plain)
+    assert not contains_sql("Please select a city from the list.")
+
+
+async def test_invented_number_triggers_one_rewrite(corpus: None) -> None:
+    s = Script(
+        [[call("sql_query", {"sql": "SELECT count(*) AS n FROM v_postings LIMIT 1"})]],
+        ["The threshold is 54,000 euros.", "I could not determine that."],
+    )
+    out = await agent_for(s).ainvoke("How many postings are below the threshold?")
+    assert out["answer"] == "I could not determine that." and out["warnings"] == []
+    assert len(s.composer_inputs) == 2
+    assert "54000" in str(s.composer_inputs[1][0].content)
+
+
+async def test_number_from_the_models_own_sql_is_not_evidence(corpus: None) -> None:
+    sql = "SELECT count(*) AS n FROM v_postings WHERE salary_min < 54000 LIMIT 1"
+    s = Script([[call("sql_query", {"sql": sql})]], ["The threshold is 54,000.", "Unknown."])
+    out = await agent_for(s).ainvoke("How many postings are below the threshold?")
+    assert out["answer"] == "Unknown." and "54000" in str(s.composer_inputs[1][0].content)
+
+
+async def test_number_still_unsupported_after_rewrite_gets_a_warning(corpus: None) -> None:
+    s = Script(
+        [[call("sql_query", {"sql": "SELECT count(*) AS n FROM v_postings LIMIT 1"})]],
+        ["It is 54,000.", "It is still 54,000."],
+    )
+    out = await agent_for(s).ainvoke("How many postings are below the threshold?")
+    assert out["answer"] == "It is still 54,000." and len(s.composer_inputs) == 2
+    assert any("numbers could not be verified" in w for w in out["warnings"])
+
+
+async def test_failed_sql_gets_a_hint_and_one_more_try(corpus: None) -> None:
+    bad = "SELECT count(*) AS n FROM v_postings WHERE required_skills ILIKE '%python%' LIMIT 1"
+    good = "SELECT count(*) AS n FROM v_postings LIMIT 1"
+    s = Script([[call("sql_query", {"sql": bad})], [call("sql_query", {"sql": good})]], ["Done."])
+    out = await agent_for(s).ainvoke("How many jobs require Python?")
+    tool_message = str(s.router_inputs[1][-1].content)
+    assert "call sql_query once more" in tool_message and "v_posting_skills" in tool_message
+    assert [r["result"].get("error") is None for r in out["tool_results"]] == [False, True]
+
+
+async def test_sql_hint_is_given_only_once(corpus: None) -> None:
+    bad = "SELECT count(*) AS n FROM v_postings WHERE required_skills ILIKE '%python%' LIMIT 1"
+    worse = "SELECT count(*) AS n FROM v_postings WHERE required_skills ILIKE '%java%' LIMIT 1"
+    s = Script([[call("sql_query", {"sql": bad})], [call("sql_query", {"sql": worse})]], ["No."])
+    await agent_for(s).ainvoke("How many jobs require Python?")
+    assert "once more" not in str(s.router_inputs[2][-1].content)
 
 
 def test_normal_sentences_about_the_data_stay() -> None:

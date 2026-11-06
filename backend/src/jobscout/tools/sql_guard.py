@@ -343,4 +343,5 @@ SCHEMA_DOC = """Read-only views (PostgreSQL):
 - mv_weekly_rates(week, n, share_english_friendly, share_salary_stated, share_visa_or_relocation)
 job_family values: data_ml, software_engineering, devops_cloud, security, product_design, engineering_hw, sales_marketing, other.
 City names are German spellings: 'München', 'Köln', 'Frankfurt am Main', 'Nürnberg', 'Düsseldorf'.
+salary_stated is a boolean: filter with salary_stated, never IS NOT NULL. required_skills and nice_to_have_skills are lists: use v_posting_skills for skills. For Blue Card results use bluecard_status ('meets_standard', 'meets_reduced_only', 'below', 'salary_not_stated'), never a salary threshold number.
 Rules: exactly one SELECT; always filter is_active = true unless asked about past postings; always end with LIMIT <= 50; no comments."""
