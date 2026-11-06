@@ -105,8 +105,8 @@ SQL_Q: list[tuple[str, str, str]] = [
     ),
     (
         "en",
-        "Which 5 companies have the most active postings?",
-        "SELECT company, count(*) AS n FROM v_postings WHERE is_active AND company IS NOT NULL GROUP BY company ORDER BY n DESC LIMIT 5",
+        "Which 4 companies have the most active postings?",
+        "SELECT company, count(*) AS n FROM v_postings WHERE is_active AND company IS NOT NULL GROUP BY company ORDER BY n DESC LIMIT 4",
     ),
     (
         "en",
@@ -125,7 +125,7 @@ SQL_Q: list[tuple[str, str, str]] = [
     ),
     (
         "de",
-        "Wie viele Praktikumsstellen (Seniorität intern) gibt es?",
+        "Wie viele Praktikums- und Werkstudentenstellen gibt es?",
         "SELECT count(*) AS n FROM v_postings WHERE is_active AND seniority = 'intern' LIMIT 1",
     ),
     (

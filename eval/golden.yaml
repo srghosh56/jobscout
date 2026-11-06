@@ -195,6 +195,7 @@ questions:
     - - engineering_hw
       - 2
 - id: sql-11
+  approved: true
   category: sql
   lang: en
   question: How many senior DevOps or cloud postings are there?
@@ -208,6 +209,7 @@ questions:
     rows:
     - - 80
 - id: sql-12
+  approved: true
   category: sql
   lang: en
   question: How many active postings list Kubernetes as a required skill?
@@ -221,6 +223,7 @@ questions:
     rows:
     - - 247
 - id: sql-13
+  approved: true
   category: sql
   lang: en
   question: How many active postings offer relocation support?
@@ -233,6 +236,7 @@ questions:
     rows:
     - - 71
 - id: sql-14
+  approved: true
   category: sql
   lang: en
   question: How many active postings ask for at most 2 years of experience?
@@ -245,6 +249,7 @@ questions:
     rows:
     - - 164
 - id: sql-15
+  approved: true
   category: sql
   lang: en
   question: How many security postings say English is enough?
@@ -258,13 +263,14 @@ questions:
     rows:
     - - 18
 - id: sql-16
+  approved: true
   category: sql
   lang: en
-  question: Which 5 companies have the most active postings?
+  question: Which 4 companies have the most active postings?
   expected_tools:
   - sql_query
   reference_sql: SELECT company, count(*) AS n FROM v_postings WHERE is_active AND company IS NOT NULL GROUP BY company ORDER
-    BY n DESC LIMIT 5
+    BY n DESC LIMIT 4
   expected_result:
     columns:
     - company
@@ -281,6 +287,7 @@ questions:
     - - Tether Operations Limited
       - 20
 - id: sql-17
+  approved: true
   category: sql
   lang: en
   question: How many active postings are below the EU Blue Card salary threshold?
@@ -293,6 +300,7 @@ questions:
     rows:
     - - 309
 - id: sql-18
+  approved: true
   category: sql
   lang: de
   question: Wie viele aktive Stellen gibt es in Hamburg?
@@ -305,6 +313,7 @@ questions:
     rows:
     - - 245
 - id: sql-19
+  approved: true
   category: sql
   lang: de
   question: Wie viele aktive Stellenanzeigen sind auf Englisch und wie viele auf Deutsch geschrieben?
@@ -322,9 +331,10 @@ questions:
     - - en
       - 1035
 - id: sql-20
+  approved: true
   category: sql
   lang: de
-  question: Wie viele Praktikumsstellen (Seniorität intern) gibt es?
+  question: Wie viele Praktikums- und Werkstudentenstellen gibt es?
   expected_tools:
   - sql_query
   reference_sql: SELECT count(*) AS n FROM v_postings WHERE is_active AND seniority = 'intern' LIMIT 1
