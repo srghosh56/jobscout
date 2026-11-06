@@ -516,6 +516,7 @@ questions:
   - ba-b44a8022b5
   label_method: reference_predicate
 - id: sem-06
+  approved: true
   category: semantic
   lang: en
   question: Frontend developer jobs with React and TypeScript in Hamburg
@@ -530,6 +531,7 @@ questions:
   - ba-b07029a834
   label_method: reference_predicate
 - id: sem-07
+  approved: true
   category: semantic
   lang: en
   question: Penetration testing jobs
@@ -541,6 +543,7 @@ questions:
   - ba-073e3a353a
   label_method: reference_predicate
 - id: sem-08
+  approved: true
   category: semantic
   lang: en
   question: iOS or Swift mobile developer positions
@@ -556,12 +559,13 @@ questions:
   - ba-ddc2e2d5ff
   label_method: reference_predicate
 - id: sem-09
+  approved: true
   category: semantic
   lang: en
-  question: Robotics software engineer jobs
+  question: Jobs in robotics
   expected_tools:
   - search_postings
-  relevance_predicate: p.title ~* 'robot'
+  relevance_predicate: p.title ~* 'robot(?!ron)'
   retrieval_filters: null
   relevant_ids:
   - an-424c0c8652
@@ -573,12 +577,12 @@ questions:
   - an-e8a7078ae9
   - an-f3bdba75f2
   - ba-324dc191b3
-  - ba-4824c9aecd
   - ba-86494cb764
   - ba-a3a2b13179
   - ba-dd076eb7a7
   label_method: reference_predicate
 - id: sem-10
+  approved: true
   category: semantic
   lang: en
   question: Bioinformatics positions
@@ -590,6 +594,7 @@ questions:
   - ba-82a7d3a39c
   label_method: reference_predicate
 - id: sem-11
+  approved: true
   category: semantic
   lang: en
   question: Site reliability engineer jobs
@@ -607,6 +612,7 @@ questions:
   - ba-d077fa593b
   label_method: reference_predicate
 - id: sem-12
+  approved: true
   category: semantic
   lang: en
   question: Rust developer jobs
@@ -619,46 +625,111 @@ questions:
   - ba-76e29996d2
   label_method: reference_predicate
 - id: sem-13
+  approved: true
   category: semantic
   lang: en
   question: Jobs for a Go (Golang) backend engineer
   expected_tools:
   - search_postings
-  relevance_predicate: p.title ~* '\mgo\M|golang'
+  relevance_predicate: (p.title ~* '\mgo\M|golang' AND p.title !~* 'go-to') OR p.raw_text ~* 'golang'
   retrieval_filters: null
   relevant_ids:
+  - an-10f471d07f
   - an-199e52c751
+  - an-20e7946edd
   - an-4bf38e4938
   - an-5adda58d05
+  - an-76c4f5cdfa
+  - an-7970a73338
+  - an-867b322f00
+  - an-a2ae5c84a6
   - an-b02fc955e1
-  - an-bdfaae1f14
-  - an-da76dc362b
-  - an-f6447556e9
+  - an-b6d4c2e530
+  - ba-0b34ba24d2
+  - ba-0c106ee2e3
   - ba-0f38eb7d96
-  - ba-178950899e
-  - ba-62a6327134
+  - ba-12d8325427
+  - ba-20ff5e2fa2
+  - ba-2937fafb39
+  - ba-33af03c2f0
   - ba-94cfe0a849
-  - ba-b1f361fd99
+  - ba-b1e124a5bc
   - ba-b69d570e98
-  - ba-c2daf74d72
+  - ba-bdc9e7701a
+  - ba-c6aedd3a07
+  - ba-e2f8a14e1f
+  - ba-eaba8e1099
+  - ba-f73238ed9d
   - ba-fa367d2c25
+  - ba-fed04fdd05
   label_method: reference_predicate
 - id: sem-14
+  approved: true
   category: semantic
   lang: en
   question: Positions involving large language models in Berlin
   expected_tools:
   - search_postings
-  relevance_predicate: p.city = 'Berlin' AND p.title ~* '\mllm|genai|generative ai|gen ai'
+  relevance_predicate: p.city = 'Berlin' AND (p.title ~* '\mllm|genai|generative ai|gen ai' OR (p.job_family IN ('data_ml',
+    'software_engineering', 'devops_cloud') AND p.raw_text ~* '\mllms?\M|genai|generative ai|gen ai|large language model'))
   retrieval_filters:
     city: Berlin
   relevant_ids:
+  - an-13b3ac9e04
+  - an-221d9d80ad
+  - an-238d09daac
+  - an-2676e93301
+  - an-288ac0a007
   - an-2c1c985686
+  - an-2cdd3a9ff7
+  - an-3806e4edfd
+  - an-46a5a5b438
+  - an-5468b16727
+  - an-554dd08e1f
+  - an-574b5b9e6b
+  - an-5adda58d05
+  - an-5dd8da1175
+  - an-76ef4bd3d6
+  - an-8497ed181e
+  - an-8e3ffd8559
+  - an-8eeaff0bd8
+  - an-933646b6ec
+  - an-995c96bd58
+  - an-a2ae5c84a6
+  - an-a32426937e
+  - an-a374449f9e
+  - an-a47d37ed3b
+  - an-aece313585
+  - an-c74b6420a6
   - an-cf7f92d0e2
+  - an-d3f43bd903
+  - an-d6a057ec43
+  - an-dd0b730f92
+  - an-e7a2b61e72
+  - an-e9d81fcfb1
+  - an-eb25b42ca2
   - an-fc6b1bcc27
+  - an-fe023b2bfc
+  - ba-0cf349676b
+  - ba-3c8ab83769
+  - ba-4a0d95e936
+  - ba-4fd66835a2
+  - ba-58bce7cc88
+  - ba-6e9c300611
   - ba-701c6070cb
+  - ba-8942987328
+  - ba-9bf2573c24
+  - ba-bbb3c31571
+  - ba-c7d9ae662e
+  - ba-cf754d6791
+  - ba-d47f0b100c
+  - ba-eba9c3d615
+  - ba-f120d67048
+  - ba-faa584e627
+  - ba-facfa4438a
   label_method: reference_predicate
 - id: sem-15
+  approved: true
   category: semantic
   lang: en
   question: Business intelligence analyst jobs with Power BI

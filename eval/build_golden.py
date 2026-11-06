@@ -185,15 +185,22 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     ),
     ("en", "Penetration testing jobs", r"p.title ~* 'pentest|penetration'", {}),
     ("en", "iOS or Swift mobile developer positions", r"p.title ~* '\mios\M|swift'", {}),
-    ("en", "Robotics software engineer jobs", r"p.title ~* 'robot'", {}),
+    ("en", "Jobs in robotics", r"p.title ~* 'robot(?!ron)'", {}),
     ("en", "Bioinformatics positions", r"p.title ~* 'bioinformati'", {}),
     ("en", "Site reliability engineer jobs", r"p.title ~* 'site reliability|\msre\M'", {}),
     ("en", "Rust developer jobs", r"p.title ~* '\mrust\M'", {}),
-    ("en", "Jobs for a Go (Golang) backend engineer", r"p.title ~* '\mgo\M|golang'", {}),
+    (
+        "en",
+        "Jobs for a Go (Golang) backend engineer",
+        r"(p.title ~* '\mgo\M|golang' AND p.title !~* 'go-to') OR p.raw_text ~* 'golang'",
+        {},
+    ),
     (
         "en",
         "Positions involving large language models in Berlin",
-        r"p.city = 'Berlin' AND p.title ~* '\mllm|genai|generative ai|gen ai'",
+        r"p.city = 'Berlin' AND (p.title ~* '\mllm|genai|generative ai|gen"
+        r" ai' OR (p.job_family IN ('data_ml', 'software_engineering', 'de"
+        r"vops_cloud') AND p.raw_text ~* '\mllms?\M|genai|generative ai|gen ai|large language model'))",
         {"city": "Berlin"},
     ),
     (
