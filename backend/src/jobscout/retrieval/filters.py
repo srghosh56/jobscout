@@ -18,7 +18,9 @@ BlueCard = Literal["meets_standard", "meets_reduced_only", "below", "salary_not_
 class SearchFilters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    city: str | None = Field(None, description="City name, e.g. 'Berlin' or 'München'")
+    city: str | None = Field(
+        None, description="City name, e.g. 'Berlin' or 'München'; several: 'Berlin, München'"
+    )
     remote_policy: list[RemotePolicy] | None = None
     seniority: list[Seniority] | None = None
     max_years: int | None = Field(None, ge=0, le=40, description="Max required years of experience")
@@ -31,6 +33,12 @@ class SearchFilters(BaseModel):
     bluecard_status: list[BlueCard] | None = None
     job_family: str | None = None
     active_only: bool = True
+
+    @field_validator("city", mode="before")
+    @classmethod
+    def _cities_to_text(cls, value: Any) -> Any:
+        """Models often send ["Berlin", "München"] where the field needs one string."""
+        return ", ".join(str(v) for v in value) if isinstance(value, list) else value
 
     @field_validator("remote_policy", "seniority", "skills", "bluecard_status", mode="before")
     @classmethod
@@ -62,7 +70,9 @@ def filter_clauses(f: SearchFilters | None) -> list[ColumnElement[bool]]:
     if f.active_only:
         c.append(Posting.is_active.is_(True))
     if f.city:
-        variants = city_variants(f.city)
+        variants = sorted(
+            {v for city in f.city.split(",") if city.strip() for v in city_variants(city.strip())}
+        )
         c.append(
             or_(
                 func.lower(Posting.city).in_(variants),

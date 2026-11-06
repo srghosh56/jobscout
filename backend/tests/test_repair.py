@@ -7,7 +7,13 @@ from typing import Any
 import pytest
 
 from jobscout.agent import repair
-from jobscout.agent.repair import ordered_ids, repair_ids, repair_profile
+from jobscout.agent.repair import (
+    ordered_ids,
+    repair_filters,
+    repair_ids,
+    repair_profile,
+    repair_search,
+)
 from jobscout.tools.schemas import CandidateProfile
 
 FIRST, SECOND = "an-0000000001", "ba-0000000002"
@@ -75,3 +81,29 @@ async def test_profile_repair_failure_keeps_the_original_arguments(
     monkeypatch.setattr(repair, "extract_profile", broken)
     args = {"profile": {"education": "MSc"}}
     assert await repair_profile(args, "my cv") == args
+
+
+def test_invented_filters_are_renamed_or_dropped() -> None:
+    filters = {
+        "city": ["Berlin", "München"],
+        "min_years_experience": 3,
+        "required_skills": ["Python"],
+        "german_level": "B1",
+        "english_sufficient": True,
+    }
+    assert repair_filters(filters) == {
+        "city": ["Berlin", "München"],
+        "max_years": 3,
+        "skills": ["Python"],
+        "english_sufficient": True,
+    }
+
+
+def test_filter_with_an_invalid_value_is_dropped_and_the_rest_kept() -> None:
+    assert repair_filters({"city": "Berlin", "max_years": "several"}) == {"city": "Berlin"}
+    assert repair_filters("Berlin") is None
+
+
+def test_search_without_a_query_uses_the_question() -> None:
+    fixed = repair_search({"filters": {"city": "Hamburg"}}, "Data jobs in Hamburg?")
+    assert fixed == {"query": "Data jobs in Hamburg?", "filters": {"city": "Hamburg"}}

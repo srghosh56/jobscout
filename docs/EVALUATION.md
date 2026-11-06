@@ -1,8 +1,8 @@
 # Evaluation
 
-**Recall@5 definition.** Scripts now use capped recall: hits in the top 5 divided by the smaller of 5 and the number of relevant postings. Recall figures below were produced with the earlier definition, so they are not comparable with later runs.
+**Read this first.** The `full_v2` numbers were produced on 2026-11-06 by scripts in this repo with **local models** (Mistral 7B as the agent, Llama 3.2 as the judge) on the human-reviewed golden set, version 2. The `full_v1` column used an unreviewed golden set, older data, a judge that marked its own answers and an earlier recall formula, so it is not directly comparable.
 
-**Read this first.** The scope check and tool-argument repair were added after this run, so the agent numbers describe the earlier version until the evaluation is rerun. All numbers below were produced by scripts in this repo on 2026-11-02 with **local models**: Mistral 7B (Q4, Ollama) as chat model, extractor and judge, and bge-m3 for embeddings, on an Apple M4 Pro. They do **not** describe what the hosted Mistral API or Gemini would score ("not measured"). Expected answers in the golden set (`eval/golden.yaml`, version 1) are generated from reference SQL and rule-based predicates, and the LLM-judge scores are **uncalibrated**.
+**Recall@5 definition.** Hits in the top 5 divided by the smaller of 5 and the number of relevant postings, so a perfect top 5 scores 1.0 however long the relevant list is.
 
 Reproduce: `make dataset-stats`, `make eval-full`, `make eval-record` (smoke), `make retrieval-bench`, `make ablations`, then `make eval-report` to regenerate the tables between the markers.
 
@@ -10,10 +10,10 @@ Reproduce: `make dataset-stats`, `make eval-full`, `make eval-record` (smoke), `
 ### Dataset (`make dataset-stats`)
 | Measure | Value |
 |---|---|
-| Unique postings (active) | 3003 (3003) |
-| Near-duplicates detected (MinHash) | 291 |
-| By source | arbeitnow: 1626, arbeitsagentur: 1377 |
-| By posting language | de: 1967, en: 1036 |
+| Unique postings (active) | 3005 (2656) |
+| Near-duplicates detected (MinHash) | 289 |
+| By source | arbeitnow: 1628, arbeitsagentur: 1377 |
+| By posting language | de: 1967, en: 1038 |
 | LLM-extracted / rules-extracted / failed | 228 / 2775 / 3 |
 | Embedded | 3003 |
 
@@ -27,26 +27,26 @@ Rules vs LLM field agreement on the 228 LLM-extracted postings:
 | remote_policy | 85.1% |
 | visa_sponsorship | 95.6% |
 | relocation_support | 98.7% |
-| salary_stated | 98.7% |
+| salary_stated | 100.0% |
 | min_years_experience | 42.5% |
 
 ### Agent evaluation (`make eval-full`, `make eval-record`)
-| Metric | full_v1 (ollama:mistral:latest, n=80) | smoke (synthetic corpus, ollama:mistral:latest, n=20) |
-|---|---|---|
-| Tool-selection accuracy | 70.0% | 70.0% |
-| SQL execution accuracy (result-set match) | 60.0% | 50.0% |
-| Recall@5 (agent's first search) | 0.32 | 1 |
-| MRR (agent's first search) | 0.61 | 1 |
-| Citation precision (first draft) | 67.4% | 72.7% |
-| Refusal recall on out-of-scope/adversarial (judge) | 0.0% | 0.0% |
-| Over-refusal on in-scope questions (judge) | 0.0% | 0.0% |
-| Refusal decision correct, all questions (judge) | 91.2% | 80.0% |
-| Judge faithfulness (1-5, uncalibrated) | 4.49 | 4.55 |
-| Judge relevance (1-5, uncalibrated) | 4.61 | 4.45 |
-| Latency p50 (s) | 35.1 | 16.1 |
-| Latency p95 (s) | 124.5 | 43.1 |
-| Tokens per question | 5922 | 3985 |
-| API cost per question (EUR) | 0 | 0 |
+| Metric | full_v1 (ollama:mistral:latest, n=80) | full_v2 (ollama:mistral:latest, n=80) | smoke (synthetic corpus, ollama:mistral:latest, n=20) |
+|---|---|---|---|
+| Tool-selection accuracy | 70.0% | 72.5% | 80.0% |
+| SQL execution accuracy (result-set match) | 60.0% | 60.0% | 100.0% |
+| Recall@5 (agent's first search) | 0.32 | 0.648 | 1 |
+| MRR (agent's first search) | 0.61 | 0.908 | 1 |
+| Citation precision (first draft) | 67.4% | 70.1% | 71.4% |
+| Refusal recall on out-of-scope/adversarial (judge) | 0.0% | 85.7% | 0.0% |
+| Over-refusal on in-scope questions (judge) | 0.0% | 4.1% | 0.0% |
+| Refusal decision correct, all questions (judge) | 91.2% | 95.0% | 80.0% |
+| Judge faithfulness (1-5, uncalibrated) | 4.49 | 3.77 | 3.8 |
+| Judge relevance (1-5, uncalibrated) | 4.61 | 4.25 | 4.95 |
+| Latency p50 (s) | 35.1 | 34.2 | 0 |
+| Latency p95 (s) | 124.5 | 117.4 | 0 |
+| Tokens per question | 5922 | 6078 | 4723 |
+| API cost per question (EUR) | 0 | 0 | 0 |
 
 Tool-selection accuracy by category (full_v1 (ollama:mistral:latest, n=80)):
 
@@ -62,64 +62,72 @@ Tool-selection accuracy by category (full_v1 (ollama:mistral:latest, n=80)):
 ### Retrieval ablation (`make retrieval-bench`, 25 semantic questions)
 | Mode | Recall@5 | MRR | nDCG@10 | p50 latency (s) | p95 latency (s) |
 |---|---|---|---|---|---|
-| fts | 0.092 | 0.261 | 0.16 | 0.164 | 0.945 |
-| dense | 0.354 | 0.743 | 0.518 | 0.277 | 0.768 |
-| hybrid | 0.239 | 0.509 | 0.366 | 0.274 | 0.321 |
-| hybrid_rerank | 0.441 | 0.835 | 0.634 | 0.746 | 1.043 |
+| fts | 0.17 | 0.291 | 0.183 | 0.075 | 0.159 |
+| dense | 0.511 | 0.777 | 0.554 | 0.259 | 0.31 |
+| hybrid | 0.386 | 0.55 | 0.403 | 0.264 | 0.278 |
+| hybrid_rerank | 0.669 | 0.913 | 0.696 | 0.732 | 0.803 |
 
 ### Plain single-shot RAG vs agent (`make ablations`, golden semantic + multi-step)
 | Metric | Single-shot RAG | Agent |
 |---|---|---|
-| Judge faithfulness | 4.95 | 4.62 |
-| Judge relevance | 4.9 | 4.65 |
-| Citation precision | 1 | 0.879 |
-| Recall@5 | 0.441 | 0.32 |
-| MRR | 0.835 | 0.61 |
-| Latency p50 (s) | 27.3 | 71.4 |
-| Latency p95 (s) | 33.5 | 176.2 |
+| Judge faithfulness | 3.4 | 3.83 |
+| Judge relevance | 4.53 | 4.65 |
+| Citation precision | 0.987 | 0.85 |
+| Recall@5 | 0.669 | 0.648 |
+| MRR | 0.913 | 0.908 |
+| Latency p50 (s) | 27.9 | 42.5 |
+| Latency p95 (s) | 40.5 | 133 |
 
 Architecture/model ablation: not measured: GEMINI_API_KEY not set (single vs supervisor+critic and Mistral vs Gemini need it)
 
 ### Judge calibration
-not measured.
+| n labelled | Agreement | Cohen's kappa |
+|---|---|---|
+| 20 | 75.0% | 0.49 |
 <!-- END GENERATED -->
 
 ## What the numbers say (plain English)
 
-**Data.** Every posting has an extraction, but most were produced by the deterministic rules and only a minority by the LLM (local throughput limited the LLM pass). On postings with both, the rules agree with the LLM on most safety-relevant fields because those fields are rule-derived in both paths. Agreement on `min_years_experience` and seniority is lower: that's where the LLM adds information and where rule-only rows are weaker.
+**Data.** Every posting has an extraction, but most come from the deterministic rules and only 228 from the LLM. Rule-based salary extraction was rewritten after review found phone numbers, perks and postcodes read as pay. It now favours precision, so some real salaries show as "not stated". Salary agreement between rules and LLM is meaningless now, because rules decide salary in both paths.
 
 **Where the agent is good.**
-- **Choosing the tool for single-intent questions:** SQL questions always went to `sql_query`, and semantic questions almost always to `search_postings` (see the per-category table).
-- **Safety under adversarial and off-topic prompts:** no harmful tool action (the one `DROP TABLE` request never reached the database), no system-prompt leak detected, no over-refusal of in-scope questions.
-- **Staying grounded when it answers:** judge faithfulness/relevance are high on the 1–5 scale. Treat this as optimistic until calibrated: the judge is the same model family as the agent (self-preference bias).
+- **Single-intent questions:** all SQL and all search questions go to the right tool.
+- **Finding a relevant job:** MRR is 0.91, so a correct job is usually at or near the top.
+- **Out-of-scope requests:** 6 of 7 were refused. `DROP TABLE` was not clearly refused, but it can't run: the SQL guard and read-only role block it.
+- **Behaviour after the guardrails:** on the same questions, German questions answered in another language fell from 7 to 0, leaked internal wording from 13 answers to 0, and invalid search calls from 12 to 0.
 
 **What is weak or got worse (honest list).**
-- **Explicit refusals: 0 of 7.** The local model never says "I can't help with that"; it deflects ("no relevant postings were found…") or asks a clarifying question (weather). The judge correctly doesn't count deflection as a refusal. The aggregate "refusal decision correct" looks high only because in-scope questions are (correctly) never refused: don't quote it without the recall number.
-- **Multi-step questions:** tool-selection accuracy is the worst category. The local router usually stops after the first tool (e.g. searches but never calls `bluecard_check`).
-- **CV questions in chat:** the router rarely builds a profile and calls `match_cv`; it searches instead. The CV page calls `match_cv` directly, so the feature works there, but not through chat.
-- **SQL execution accuracy** is limited by wrong SQL semantics (operator precedence, extra conditions, missing columns), even though the guard and the LIMIT repair work.
-- **Citation precision on first drafts:** the composer still invents IDs on some answers. The checker catches them (regeneration or "unverified" marking), so final answers are safer than this number suggests, but it shows the model's tendency.
-- **Recall@5 of the agent's first search** is far below MRR: the first relevant posting is often near the top, but the agent's query (with its own filters) rarely retrieves *all* relevant postings in five results. Some relevant sets have 10–25 postings, which caps recall@5 below 1 by construction.
-- **Latency** is minutes at p95 on local hardware; parts of the full run overlapped with a Docker build and a model download on the same machine, which inflated latency. Don't quote latency as a product number.
+- **Multi-step questions: 0 of 15** used all the required tools. The local model usually calls one tool and stops.
+- **CV questions in chat: 1 of 8** used the required tool. The CV page calls `match_cv` directly, so the feature works there.
+- **SQL execution accuracy stayed at 60%.** The guardrails stopped bad behaviour but did not make the model's SQL correct. One question improved and another got worse. A failed query now gets one guided retry, but the model often fails again.
+- **What got worse: answers are slower** (median 28 s to 34 s), because some answers get a rewrite or a retry.
+- **What got worse: 3 of 73 in-scope questions counted as refused**, up from 1. They are not real refusals: the SQL failed twice and the agent said it could not get the data, which the judge reads as refusing.
+- **The answer checks are limited.** They catch numbers of 1,000 or more and SQL on its own line. multi-08 still showed an invented "90%" and invented rows, and sql-21 still said no jobs were found after its query failed.
+- **Citation precision on first drafts** is 70%. The citation check catches invalid IDs before the answer is shown.
 
-**Smoke set (CI).** The first recording failed the a-priori thresholds (SQL execution accuracy near zero: the model omitted LIMIT and the composer turned the guard error into "no postings"). After a fix to the LIMIT handling the re-recording improved; CI thresholds in `eval/smoke.yaml` are **regression gates set just below this recorded baseline**, not quality targets.
+**Judge calibration.** On 20 hand-labelled answers, Llama 3.2 agreed with the reviewer on 75% (Cohen's kappa 0.49, moderate). Mistral marking its own answers agreed on 65% (0.34), and every disagreement was too generous. Llama made 5 mistakes: 3 too strict, 2 too generous. The answers differed between the two rounds and the sample is small, so treat this as a rough comparison. Judge scores are indicative only. The judge never sees the correct answer, so exact-match SQL accuracy is the stronger evidence.
+
+**Smoke set (CI).** 20 questions on a synthetic corpus, replayed from recorded model answers, so CI needs no keys. It was re-recorded for the final agent.
 
 **Retrieval ablation (25 semantic questions).**
-- **Hybrid + cross-encoder rerank is the best mode** on every quality metric (recall@5 0.441, MRR 0.835, nDCG@10 0.634) for about 0.5 s extra median latency. This is the configuration the product uses.
-- **What got worse: plain hybrid (RRF without rerank) is *worse* than dense alone** (recall@5 0.239 vs 0.354; MRR 0.509 vs 0.743). Full-text search is very weak here (recall@5 0.092) even though the labels favour lexical matches. Likely reasons: OR-ed query terms with `ts_rank_cd` (no IDF) reward generic words, and English queries against German ads. RRF gives the weak list equal weight, so it pulls good dense results down. The reranker recovers this. Next step: weighted RRF or BM25 (`pg_search`), measured with the same bench.
+- **Hybrid + cross-encoder rerank is the best mode** on every quality metric (recall@5 0.669, MRR 0.913, nDCG@10 0.696) for about 0.5 s extra median latency.
+- **What got worse: plain hybrid (RRF without rerank) is worse than dense alone** (recall@5 0.386 vs 0.511). Full-text search is weak here (0.170), so fusing it in hurts until the reranker reorders the results.
 
 **Plain single-shot RAG vs the agent (40 semantic + multi-step questions).**
-- **What got worse: the agent loses to a fixed retrieve-then-answer pipeline on these questions.** Single-shot RAG (hybrid+rerank top-8 → one composer call) scored higher judge faithfulness/relevance (4.95/4.90 vs 4.62/4.65, uncalibrated), perfect first-draft citation precision (1.0 vs 0.879), better retrieval (recall@5 0.441 vs 0.32; MRR 0.835 vs 0.61) and much lower latency (p50 27 s vs 71 s). With a 7B router, the agent's own queries and filters are worse than simply searching with the user's question, and the extra calls cost time.
-- **Where the agent still earns its keep:** questions that need SQL (counts, shares, rankings), where single-shot RAG can't answer, and tool combinations (Blue Card checks, comparisons). That's exactly where the multi-step weakness lies, though.
-- **Implication:** route search-intent questions to the deterministic pipeline and reserve the agent for data and multi-tool questions (the supervisor variant does this structurally; not measured yet), and re-run this ablation with a hosted model before deciding.
+- **Finding jobs is tied:** MRR is 0.913 vs 0.908, because plain search questions now use the same retrieval.
+- **RAG is faster and has cleaner citations:** p95 40.5 s vs 133 s, and citation precision 98.7% vs 85.0%.
+- **The judge rated the agent as more faithful** (3.83 vs 3.40). This is indicative only, given the moderate calibration.
+- **Implication:** search-only questions take the single-shot path in the product. The agent is only justified for multi-tool questions, which is where this local model fails.
 
 ## Caveats
-- Semantic relevance labels come from regex predicates over title/text (`label_method: reference_predicate`). They favour lexical matches, so they flatter full-text search, and they miss relevant postings that use other words.
-- The judge is uncalibrated: **judge agreement / Cohen's kappa: not measured.**
-- API cost per question is 0 EUR for local models (hardware and electricity not counted); hosted prices are null in `config/pricing.yaml`, so hosted cost is **not measured**.
+- Semantic relevance labels come from reviewed regex rules over title and text. They favour lexical matches and miss relevant postings that use other words.
+- The golden set was reviewed once by one person, and some guardrail wording was written after reading these questions, so results may be slightly optimistic.
+- Judge calibration uses 20 answers, and the reviewer saw the author's checks and opinions while labelling, so it is not fully independent.
+- API cost per question is 0 EUR for local models (hardware and electricity not counted); hosted cost is **not measured**.
 - Supervisor + critic vs single agent and Mistral vs Gemini: **not measured** (needs a Gemini key).
 
 ## Metrics per golden-set version
 | Golden version | Results file | Notes |
 |---|---|---|
-| 1 | `eval/results/full_v1.json` | 80 questions, local Mistral 7B |
+| 1 | `eval/results/full_v1.json` | 80 questions, unreviewed, local Mistral 7B |
+| 2 | `eval/results/full_v2.json` | 80 questions, human-reviewed, Mistral 7B agent, Llama 3.2 judge |

@@ -42,9 +42,21 @@ from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 
 from jobscout.agent import prompts
-from jobscout.agent.citations import check_citations, clean_draft, ids_in, strip_invalid
+from jobscout.agent.citations import (
+    check_citations,
+    clean_draft,
+    draft_problems,
+    ids_in,
+    remove_sql,
+    strip_invalid,
+)
 from jobscout.agent.recovery import recover_tool_calls
-from jobscout.agent.repair import DEPENDENT_TOOLS, ordered_ids, repair_args
+from jobscout.agent.repair import (
+    DEPENDENT_TOOLS,
+    ordered_ids,
+    repair_args,
+    repair_search,
+)
 from jobscout.agent.route import is_search_only
 from jobscout.agent.scope import check_scope, refusal_message
 from jobscout.llm import get_chat_model, usage_of
@@ -63,6 +75,15 @@ from jobscout.settings import get_settings
 from jobscout.tools.impl import TOOLS, run_tool, wrap_untrusted
 
 
+def evidence_text(state: Any) -> str:
+    """The question and what the tools returned. The model's own arguments and the SQL it
+    wrote are left out, so its guesses cannot count as evidence for its answer."""
+    returned = [
+        {k: v for k, v in r["result"].items() if k != "sql"} for r in state.get("turn_results", [])
+    ]
+    return str(state["question"]) + json.dumps(returned, ensure_ascii=False, default=str)
+
+
 class AgentState(TypedDict, total=False):
     messages: Annotated[list[AnyMessage], add_messages]
     question: str
@@ -74,6 +95,7 @@ class AgentState(TypedDict, total=False):
     draft: str
     citation_attempts: int
     invalid_citations: list[str]
+    problems: list[str]
     citations: list[str]
     warnings: list[str]
     clarification: str | None
@@ -197,7 +219,12 @@ def build_graph(
             seen.add(key)
             calls.append(call)
         executed, skipped = calls[:budget], calls[budget:]
-        used_args = {id(c): c.get("args") or {} for c in executed}
+        used_args = {
+            id(c): repair_search(c.get("args") or {}, state["question"])
+            if c["name"] == "search_postings"
+            else c.get("args") or {}
+            for c in executed
+        }
 
         async def one(call: Any) -> tuple[Any, dict[str, Any], float]:
             write(
@@ -244,10 +271,14 @@ def build_graph(
         turn = list(state.get("turn_results", []))
         new_ids: set[str] = set()
         clarification = None
+        sql_failed_before = any(r["tool"] == "sql_query" and r["result"].get("error") for r in turn)
         for call, result, _ in results:
+            hint = ""
+            if call["name"] == "sql_query" and result.get("error") and not sql_failed_before:
+                hint = prompts.sql_retry_hint(str(result["error"]))
             tool_msgs.append(
                 ToolMessage(
-                    content=wrap_untrusted(call["name"], result),
+                    content=wrap_untrusted(call["name"], result) + hint,
                     tool_call_id=call["id"],
                     name=call["name"],
                 )
@@ -299,6 +330,8 @@ def build_graph(
         extra = ""
         if state.get("invalid_citations"):
             extra += prompts.REGENERATE_NOTE.format(invalid=", ".join(state["invalid_citations"]))
+        if state.get("problems"):
+            extra += prompts.REVIEW_NOTE.format(problems="; ".join(state["problems"]))
         if state.get("budget_exhausted"):
             extra += prompts.BUDGET_NOTE
         results = state.get("turn_results", [])
@@ -308,7 +341,10 @@ def build_graph(
         )
         msgs = [
             SystemMessage(prompts.COMPOSER_SYSTEM.format(language=lang, extra=extra)),
-            HumanMessage(f"Question: {state['question']}\n\nTool results:\n{context}"),
+            HumanMessage(
+                f"Question: {state['question']}\n\nTool results:\n{context}\n\n"
+                f"Write the whole answer in {lang}."
+            ),
         ]
         with span("agent.composer", regenerate=bool(state.get("invalid_citations"))):
             ai = await chat.ainvoke(msgs)
@@ -333,11 +369,31 @@ def build_graph(
             *state.get("citation_history", []),
             {"cited": len(check.cited), "invalid": len(check.invalid)},
         ]
+        problems = draft_problems(draft, evidence_text(state)) if check.ok else []
+        wrong_language = (
+            check.ok
+            and state.get("language") == "de"
+            and prompts.detect_text_language(draft) != "de"
+        )
+        unverified = bool(problems)
+        if wrong_language:
+            problems.append("it was not written in German")
+        if problems and attempts < 2:
+            write({"type": "reset", "reason": "answer check", "problems": problems})
+            return {
+                "citation_attempts": attempts,
+                "invalid_citations": [],
+                "problems": problems,
+                "citation_history": history,
+            }
+        if unverified:
+            warnings.append("Some numbers could not be verified. Please double-check them.")
         if check.ok:
             CITATION_CHECKS.labels(outcome="ok" if attempts == 1 else "ok_after_regen").inc()
             write({"type": "citation", "ids": check.valid})
             return {
-                "answer": draft,
+                "answer": remove_sql(draft),
+                "problems": [],
                 "citations": check.valid,
                 "citation_attempts": attempts,
                 "invalid_citations": [],
@@ -359,7 +415,7 @@ def build_graph(
         )
         write({"type": "citation", "ids": check.valid})
         return {
-            "answer": strip_invalid(draft, check.invalid),
+            "answer": remove_sql(strip_invalid(draft, check.invalid)),
             "citations": check.valid,
             "citation_attempts": attempts,
             "warnings": warnings,
@@ -368,7 +424,9 @@ def build_graph(
 
     def after_check(state: AgentState) -> Literal["composer", "__end__"]:
         return (
-            "composer" if state.get("invalid_citations") and not state.get("answer") else "__end__"
+            "composer"
+            if (state.get("invalid_citations") or state.get("problems")) and not state.get("answer")
+            else "__end__"
         )
 
     async def scope_check(state: AgentState) -> dict[str, Any]:
@@ -434,6 +492,7 @@ def turn_input(question: str) -> dict[str, Any]:
         "answer": "",
         "draft": "",
         "citation_attempts": 0,
+        "problems": [],
         "invalid_citations": [],
         "citations": [],
         "warnings": [],

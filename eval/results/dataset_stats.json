@@ -1,19 +1,19 @@
 {
-  "unique_postings": 3003,
-  "near_duplicates": 291,
-  "active": 3003,
-  "inactive": 0,
+  "unique_postings": 3005,
+  "near_duplicates": 289,
+  "active": 2656,
+  "inactive": 349,
   "llm_extracted": 228,
   "rules_extracted": 2775,
   "extraction_failed": 3,
   "embedded": 3003,
   "by_source": {
-    "arbeitnow": 1626,
+    "arbeitnow": 1628,
     "arbeitsagentur": 1377
   },
   "by_posting_language": {
     "de": 1967,
-    "en": 1036
+    "en": 1038
   },
   "rules_vs_llm_agreement": {
     "n": 228,
@@ -23,7 +23,7 @@
     "remote_policy": 0.851,
     "visa_sponsorship": 0.956,
     "relocation_support": 0.987,
-    "salary_stated": 0.987,
+    "salary_stated": 1.0,
     "min_years_experience": 0.425
   },
   "note": "english_sufficient, german_level and visa/relocation are rule-derived in both paths, so their agreement is expected to be high; seniority/years/remote show what the LLM adds."

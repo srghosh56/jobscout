@@ -1,5 +1,5 @@
 {
   "n_labelled": 20,
-  "agreement": 0.65,
-  "cohens_kappa": 0.34
+  "agreement": 0.75,
+  "cohens_kappa": 0.49
 }
