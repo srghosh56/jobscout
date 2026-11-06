@@ -10,6 +10,7 @@ from typing import Any
 
 from jobscout.ingest.cleaning import (
     CleanPosting,
+    arbeitnow_site_country,
     classify_country,
     html_to_text,
     normalize_city,
@@ -165,7 +166,8 @@ ARBEITNOW_URL = "https://www.arbeitnow.com/api/job-board-api"
 
 def arbeitnow_to_posting(job: dict[str, Any]) -> CleanPosting:
     location = str(job.get("location") or "")
-    country = classify_country(location)
+    url = str(job.get("url") or "")
+    country = arbeitnow_site_country(url) or classify_country(location)
     city = normalize_city(location) if country == "Germany" else None
     created = job.get("created_at")
     published = (
@@ -177,7 +179,7 @@ def arbeitnow_to_posting(job: dict[str, Any]) -> CleanPosting:
     return CleanPosting(
         source="arbeitnow",
         source_id=str(job["slug"]),
-        url=str(job.get("url") or ""),
+        url=url,
         title=str(job.get("title") or ""),
         company=job.get("company_name"),
         raw_text=text,

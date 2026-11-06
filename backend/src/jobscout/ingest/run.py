@@ -7,11 +7,11 @@ import datetime as dt
 from collections.abc import AsyncIterator
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from jobscout.db.engine import session_scope
 from jobscout.db.models import IngestRun, Posting
-from jobscout.ingest.cleaning import CleanPosting
+from jobscout.ingest.cleaning import CleanPosting, arbeitnow_site_country
 from jobscout.ingest.dedup import DocForDedup, find_duplicates
 from jobscout.ingest.http import PoliteClient
 from jobscout.ingest.sources import (
@@ -156,6 +156,34 @@ async def prune_out_of_scope() -> int:
             )
             await session.execute(delete(Posting).where(Posting.id.in_(foreign)))
             await session.commit()
+    return len(foreign)
+
+
+async def retire_foreign_sites() -> int:
+    """Take postings from Arbeitnow's foreign sites out of the product, keeping their rows.
+
+    A German posting that was marked as a copy of a foreign one becomes the original again."""
+    async with session_scope() as session:
+        rows = (
+            await session.execute(
+                select(Posting.id, Posting.url).where(
+                    Posting.source == "arbeitnow", Posting.is_active.is_(True)
+                )
+            )
+        ).all()
+        foreign = {r.id: c for r in rows if (c := arbeitnow_site_country(r.url))}
+        for posting_id, country in foreign.items():
+            await session.execute(
+                update(Posting)
+                .where(Posting.id == posting_id)
+                .values(country=country, is_active=False, inactive_since=func.now())
+            )
+        await session.execute(
+            update(Posting)
+            .where(Posting.duplicate_of.in_(list(foreign)), Posting.id.not_in(list(foreign)))
+            .values(duplicate_of=None)
+        )
+        await session.commit()
     return len(foreign)
 
 
