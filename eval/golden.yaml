@@ -5,6 +5,7 @@ dataset:
   active_postings: 3003
 questions:
 - id: sql-01
+  approved: true
   category: sql
   lang: en
   question: How many active postings are there in Berlin?
@@ -17,6 +18,7 @@ questions:
     rows:
     - - 592
 - id: sql-02
+  approved: true
   category: sql
   lang: en
   question: Which 5 cities have the most active postings?
@@ -40,6 +42,7 @@ questions:
     - - Köln
       - 129
 - id: sql-03
+  approved: true
   category: sql
   lang: en
   question: How many active postings say English is enough?
@@ -52,6 +55,7 @@ questions:
     rows:
     - - 835
 - id: sql-04
+  approved: true
   category: sql
   lang: en
   question: How many active data and machine learning postings are there in Munich?
@@ -65,6 +69,7 @@ questions:
     rows:
     - - 56
 - id: sql-05
+  approved: true
   category: sql
   lang: en
   question: What are the 10 most frequently required skills in data/ML postings?
@@ -98,6 +103,7 @@ questions:
     - - git
       - 37
 - id: sql-06
+  approved: true
   category: sql
   lang: en
   question: How many active postings meet the standard EU Blue Card salary threshold?
@@ -110,6 +116,7 @@ questions:
     rows:
     - - 265
 - id: sql-07
+  approved: true
   category: sql
   lang: en
   question: Which 5 cities have the most postings that mention visa sponsorship?
@@ -131,6 +138,7 @@ questions:
     - - Cardiff
       - 1
 - id: sql-08
+  approved: true
   category: sql
   lang: en
   question: What is the average minimum annual salary in EUR of software engineering postings that state a salary?
@@ -144,6 +152,7 @@ questions:
     rows:
     - - 1917540.0
 - id: sql-09
+  approved: true
   category: sql
   lang: en
   question: How many active postings require fluent or native German?
@@ -156,6 +165,7 @@ questions:
     rows:
     - - 1240
 - id: sql-10
+  approved: true
   category: sql
   lang: en
   question: How many remote postings are there per job family?
