@@ -479,10 +479,13 @@ questions:
   question: Computer vision engineer positions
   expected_tools:
   - search_postings
-  relevance_predicate: p.title ~* 'computer vision|vision engineer|bildverarbeitung'
+  relevance_predicate: p.title ~* 'computer vision|machine.?vision|vision engineer|bildverarbeitung'
   retrieval_filters: null
   relevant_ids:
+  - ba-018793480b
   - ba-11c491789c
+  - ba-5010593413
+  - ba-9a08b5c640
   - ba-e286a55301
   label_method: reference_predicate
 - id: sem-04
@@ -938,6 +941,7 @@ questions:
   - ba-eefc2e7f80
   label_method: reference_predicate
 - id: multi-01
+  approved: true
   category: multi_step
   lang: en
   question: Find machine learning jobs in Berlin where English is enough, and tell me whether the first one meets the Blue
@@ -946,6 +950,7 @@ questions:
   - search_postings
   - bluecard_check
 - id: multi-02
+  approved: true
   category: multi_step
   lang: en
   question: How many Kubernetes postings are there in Munich? Show me two examples.
@@ -953,13 +958,15 @@ questions:
   - sql_query
   - search_postings
 - id: multi-03
+  approved: true
   category: multi_step
   lang: en
-  question: Compare the two data engineering postings in Berlin with the highest stated minimum salary.
+  question: Compare the two data or machine learning postings in Berlin with the highest stated minimum salary.
   expected_tools:
   - sql_query
   - compare_postings
 - id: multi-04
+  approved: true
   category: multi_step
   lang: en
   question: Which city has the most English-friendly postings, and what are two good data jobs there?
@@ -967,6 +974,7 @@ questions:
   - sql_query
   - search_postings
 - id: multi-05
+  approved: true
   category: multi_step
   lang: en
   question: Find a DevOps job with relocation support and summarise its requirements.
@@ -974,20 +982,23 @@ questions:
   - search_postings
   - get_posting
 - id: multi-06
+  approved: true
   category: multi_step
   lang: en
-  question: Is there any posting in Hamburg that mentions visa sponsorship? If so, does its salary meet the Blue Card threshold?
+  question: Is there any posting in Munich that mentions visa sponsorship? If so, does its salary meet the Blue Card threshold?
   expected_tools:
   - search_postings
   - bluecard_check
 - id: multi-07
+  approved: true
   category: multi_step
   lang: en
-  question: List junior software jobs in Berlin that do not require German, and compare the first two.
+  question: List junior software jobs in Germany that do not require German, and compare the first two.
   expected_tools:
   - search_postings
   - compare_postings
 - id: multi-08
+  approved: true
   category: multi_step
   lang: en
   question: What share of data/ML postings state a salary, and show one that does.
@@ -995,13 +1006,15 @@ questions:
   - sql_query
   - search_postings
 - id: multi-09
+  approved: true
   category: multi_step
   lang: en
-  question: Find me a remote Python job and check its German requirements.
+  question: Find me a remote Python job and tell me what the full ad says about German.
   expected_tools:
   - search_postings
   - get_posting
 - id: multi-10
+  approved: true
   category: multi_step
   lang: en
   question: Which are the three most common skills in DevOps postings, and find one job that needs all three?

@@ -167,7 +167,7 @@ SEMANTIC_Q: list[tuple[str, str, str, dict[str, Any]]] = [
     (
         "en",
         "Computer vision engineer positions",
-        r"p.title ~* 'computer vision|vision engineer|bildverarbeitung'",
+        r"p.title ~* 'computer vision|machine.?vision|vision engineer|bildverarbeitung'",
         {},
     ),
     ("en", "MLOps engineer jobs", r"p.title ~* 'mlops'", {}),
@@ -284,7 +284,7 @@ MULTI_Q: list[tuple[str, str, list[str]]] = [
     ),
     (
         "en",
-        "Compare the two data engineering postings in Berlin with the highest stated minimum salary.",
+        "Compare the two data or machine learning postings in Berlin with the highest stated minimum salary.",
         ["sql_query", "compare_postings"],
     ),
     (
@@ -299,12 +299,12 @@ MULTI_Q: list[tuple[str, str, list[str]]] = [
     ),
     (
         "en",
-        "Is there any posting in Hamburg that mentions visa sponsorship? If so, does its salary meet the Blue Card threshold?",
+        "Is there any posting in Munich that mentions visa sponsorship? If so, does its salary meet the Blue Card threshold?",
         ["search_postings", "bluecard_check"],
     ),
     (
         "en",
-        "List junior software jobs in Berlin that do not require German, and compare the first two.",
+        "List junior software jobs in Germany that do not require German, and compare the first two.",
         ["search_postings", "compare_postings"],
     ),
     (
@@ -314,7 +314,7 @@ MULTI_Q: list[tuple[str, str, list[str]]] = [
     ),
     (
         "en",
-        "Find me a remote Python job and check its German requirements.",
+        "Find me a remote Python job and tell me what the full ad says about German.",
         ["search_postings", "get_posting"],
     ),
     (
