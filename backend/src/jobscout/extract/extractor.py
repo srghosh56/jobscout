@@ -193,9 +193,8 @@ def derive_fields(
     data: dict[str, Any], text: str, year: int, source_remote_flag: bool | None = None
 ) -> dict[str, Any]:
     """Map a validated JobLens dict to DB columns + deterministic derived fields."""
-    salary = data.get("salary")
-    if not salary:
-        salary = rules.extract_salary(text)  # deterministic backstop (high precision)
+    # Rules decide, as for the other filter fields: a local LLM returned perks and years as pay.
+    salary = rules.extract_salary(text)
     visa = _grounded(data.get("visa_sponsorship"), text, rules.VISA_YES, rules.VISA_NO, VISA_WORDS)
     reloc = _grounded(
         data.get("relocation_support"), text, rules.RELOC_YES, rules.RELOC_NO, RELOC_WORDS

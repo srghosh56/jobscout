@@ -57,6 +57,45 @@ def test_english_sufficient(
         ("Salary: 55000 EUR", {"min": 55000, "max": None, "period": "year"}),
         ("3+ years of experience. Competitive salary.", None),
         ("Wir bieten 30 Tage Urlaub und 40 Stunden pro Woche.", None),
+        # The period comes from next to the amount, not from elsewhere on the line.
+        (
+            "Gehalt 60.041,80 EUR bis 81.737,09 EUR Jahresbrutto bei 40 Stunden pro Woche",
+            {"min": 60041.8, "max": 81737.09, "period": "year"},
+        ),
+        (
+            "Gehalt: 4.485,- EUR pro Monat bei 38,5 Stunden pro Woche",
+            {"min": 4485, "period": "month"},
+        ),
+        ("Bei 40 Wochenstunden bis zu 90.000 € brutto jährlich", {"min": 90000, "period": "year"}),
+        ("inklusive 13. Monatsgehalt. Jahresgehalt: 56.000 € - 67.000 €", {"period": "year"}),
+        ("Der Stundenlohn liegt bei 14,60 Euro", {"min": 14.6, "period": "hour"}),
+        # No period stated: only amounts with one possible meaning get a period.
+        ("Salary 4.500 EUR", {"min": 4500, "period": "month"}),
+        ("Vergütung: 300 €", None),
+        ("Gehalt: 17.000 €", None),
+        # Layout variants.
+        ("<span>Annual pay</span> gross €70.000  —  €90.000 EUR", {"min": 70000, "max": 90000}),
+        (
+            '<div class="pay-range"><span>€70,000</span> &mdash; <span>€90,000</span>',
+            {"max": 90000},
+        ),
+        ("annual gross salary between EUR68.000 and EUR80.000", {"min": 68000, "max": 80000}),
+        ("Jahresgehalt: bis zu 75.000,– €", {"min": 75000}),
+        # Not pay.
+        ("Annual learning budget of €2,000 on top of your salary", None),
+        ("Attraktives Gehalt und 50 € Gutschein pro Monat", None),
+        ("Gehalt: 10.000 EUR brutto Wechselprämie", None),
+        ("Gehalt nach Tarif, 300 Mio. € Umsatz in 2025", None),
+        ("Gehalt nach Absprache, Telefon +49 30 5550123", None),
+        ("Salary: market rate. Our office, Munich 80331", None),
+        ("Tell us your salary expectations: €60,000", None),
+        ("In 2026 we raised €35 million. Competitive salary.", None),
+        # Wrong currency, impossible amount.
+        ("Salary: $120,000 to $150,000 USD", None),
+        ("Salary up to £80,000", None),
+        ("Salary: CHF 66,000 per year", None),
+        ("Gehalt: 750.000 € pro Monat", None),
+        ("Gehalt: 3.000 € pro Jahr", None),
     ],
 )
 def test_extract_salary(text: str, expected: dict[str, Any] | None) -> None:

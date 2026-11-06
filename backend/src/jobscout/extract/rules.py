@@ -6,6 +6,7 @@ the ``fake`` provider (tests, CI, offline demo). Every rule is table-tested in
 
 from __future__ import annotations
 
+import html
 import re
 from typing import Any
 
@@ -121,55 +122,110 @@ def english_sufficient(
 
 
 # --- salary -------------------------------------------------------------------
-_NUM = r"\d{1,3}(?:[.,\s]\d{3})+|\d+(?:[.,]\d+)?\s?[kK]|\d{2,6}"
+# Precision first: a wrong salary produces a wrong Blue Card verdict, a missing one only
+# produces "salary not stated". An amount counts only if it is in euros, sits next to pay
+# wording, is not a perk or company figure, and is realistic for its time period.
+_AMOUNT = (
+    r"\d{1,3}(?:[.,\s]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?\s?[kK]\b|\d{2,6}(?:[.,]\d{1,2})?"
+)
+_EUR = r"(?:€|\beur(?:os?)?(?![a-zäöü]))"
 _SAL = re.compile(
-    rf"(?:€|eur|euro)?\s?(?P<a>{_NUM})\s?(?:€|eur|euro)?"
-    rf"(?:\s?(?:-|–|to|bis)\s?(?:€|eur|euro)?\s?(?P<b>{_NUM}))?\s?(?:€|eur|euro)?"
-    r"(?P<tail>[^.\n]{0,40})",
+    rf"(?<![\d.,])(?P<c1>{_EUR})?\s?(?P<a>{_AMOUNT})(?:,[-–]+)?\s?(?P<c2>{_EUR})?"
+    rf"(?:\s*(?:-|–|—|to|bis|und|and)\s*(?:{_EUR})?\s?(?P<b>{_AMOUNT})(?:,[-–]+)?\s?(?P<c3>{_EUR})?)?",
     re.I,
 )
-_PERIOD = [
-    ("hour", re.compile(r"per hour|/\s?h\b|/\s?hour|stunde|stündlich|hourly|pro std", re.I)),
-    ("month", re.compile(r"per month|/\s?month|monat|monthly|mtl", re.I)),
-    ("year", re.compile(r"per year|/\s?year|p\.?\s?a\.?|jahr|annual|yearly|brutto|gross", re.I)),
+_PAY_WORDS = re.compile(
+    r"salary|gehalt(?!en)|gehälter|vergütung|verdienst|einkommen|entgelt|(?<!be)lohn(?!t)|"
+    r"compensation|remuneration|honorar|fixum|base pay|pay range|pay scale|\bote\b|on-target|brutto|\bgross\b",
+    re.I,
+)
+_NOT_PAY = re.compile(
+    r"budget|zuschuss|gutschein|sachbezug|guthaben|bonus|prämie|signing|benefit|altersvorsorge|"
+    r"vermögenswirksam|weiterbildung|umsatz|revenue|\barr\b|pipeline|funding|valuation|"
+    r"gehaltsvorstellung|gehaltswunsch|salary expectation|\bmio\b|\bmrd\b|million|milliard|billion",
+    re.I,
+)
+_PERIODS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "hour",
+        re.compile(
+            r"pro (?:std|stunde)|per hour|/\s?(?:h|std|stunde|hour)\b|je (?:einsatz)?stunde|"
+            r"stundenlohn|stundensatz|stundenvergütung|stündlich|hourly",
+            re.I,
+        ),
+    ),
+    (
+        "month",
+        re.compile(
+            r"pro monat|per month|a month|/\s?(?:mtl|monat|month)|monatlich|monthly|\bmtl\b|"
+            r"(?<!\d\.\s)monatsgehalt|monatsbrutto|monatsentgelt",
+            re.I,
+        ),
+    ),
+    (
+        "year",
+        re.compile(
+            r"pro jahr|per year|a year|per annum|/\s?(?:jahr|year|annum)|jährlich|yearly|annual|"
+            r"\bp\.\s?a\b|jahres(?:brutto|gehalt|gesamt|vergütung|einkommen|entgelt)",
+            re.I,
+        ),
+    ),
 ]
-_SAL_CONTEXT = re.compile(r"salary|gehalt|vergütung|compensation|pay|€|eur|euro", re.I)
+# Lowest and highest believable amount per period, including internships and working students.
+_BOUNDS = {"hour": (8.0, 250.0), "month": (250.0, 30_000.0), "year": (10_000.0, 500_000.0)}
+_MARKUP = re.compile(r"<[^>]+>")
 
 
 def _to_number(s: str) -> float:
-    s = s.strip().replace(" ", "")
+    s = re.sub(r"\s", "", s)
     if s[-1:] in "kK":
         return float(s[:-1].replace(",", ".")) * 1000
-    if re.fullmatch(r"\d{1,3}(?:[.,]\d{3})+", s):
-        return float(re.sub(r"[.,]", "", s))
-    return float(s.replace(",", "."))
+    m = re.fullmatch(r"(.*)[.,](\d{1,2})", s)
+    whole, cents = (m.group(1), m.group(2)) if m else (s, "0")
+    return float(f"{re.sub(r'[.,]', '', whole)}.{cents}")
+
+
+def _period(line: str, start: int, end: int) -> str | None:
+    """The stated period closest to the amount, ignoring the rest of the line."""
+    best: tuple[int, str] | None = None
+    for name, pat in _PERIODS:
+        for m in pat.finditer(line, max(0, start - 45), min(len(line), end + 30)):
+            distance = max(start - m.end(), m.start() - end, 0)
+            if best is None or distance < best[0]:
+                best = (distance, name)
+    return best[1] if best else None
+
+
+def _guess_period(amount: float) -> str | None:
+    """No period stated: only amounts that can mean one thing get a period."""
+    if amount >= 20_000:
+        return "year"
+    return "month" if 1_000 <= amount < 15_000 else None
 
 
 def extract_salary(text: str) -> dict[str, Any] | None:
-    for line in re.split(r"[\n]", text):
-        if not _SAL_CONTEXT.search(line) or not re.search(r"€|eur|euro|gehalt|salary", line, re.I):
+    text = html.unescape(text.replace('class="pay-range"', ">salary range<a "))
+    plain = _MARKUP.sub(" ", text).replace("**", "")
+    for line in plain.split("\n"):
+        if not _PAY_WORDS.search(line):
             continue
         for m in _SAL.finditer(line):
-            if not re.search(r"€|eur|euro", m.group(0), re.I) and not re.search(
-                r"salary|gehalt", line[: m.start()], re.I
-            ):
+            start, end = m.span()
+            if not (m.group("c1") or m.group("c2") or m.group("c3")):
                 continue
-            try:
-                a = _to_number(m.group("a"))
-                b = _to_number(m.group("b")) if m.group("b") else None
-            except ValueError:
+            if not _PAY_WORDS.search(line, max(0, start - 120), min(len(line), end + 60)):
                 continue
-            if a < 8 and b is None:
+            if _NOT_PAY.search(line, max(0, start - 40), min(len(line), end + 25)):
                 continue
-            period = "year"
-            ctx = m.group("tail") + " " + line
-            for name, pat in _PERIOD:
-                if pat.search(ctx):
-                    period = name
-                    break
-            if period == "year" and a < 1000:
-                continue  # "5 years", "40 Stunden" etc.
+            a = _to_number(m.group("a"))
+            b = _to_number(m.group("b")) if m.group("b") else None
             lo, hi = (a, b) if b is None or a <= b else (b, a)
+            period = _period(line, start, end) or _guess_period(lo)
+            if period is None:
+                continue
+            floor, ceiling = _BOUNDS[period]
+            if lo < floor or (hi if hi is not None else lo) > ceiling:
+                continue
             return {"min": lo, "max": hi, "currency": "EUR", "period": period}
     return None
 

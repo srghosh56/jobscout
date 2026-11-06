@@ -31,8 +31,11 @@ def cmd_ingest(args: argparse.Namespace) -> None:
 
 
 def cmd_extract(args: argparse.Namespace) -> None:
-    from jobscout.extract.runner import run_extraction
+    from jobscout.extract.runner import refresh_salaries, run_extraction
 
+    if args.salaries_only:
+        print(json.dumps(_run(refresh_salaries()), indent=2))
+        return
     if args.rules_only:
         from jobscout.extract.runner import run_rules_extraction
 
@@ -124,6 +127,7 @@ def main(argv: list[str] | None = None) -> None:
     sp.add_argument("--concurrency", type=int, default=2)
     sp.add_argument("--rules-only", action="store_true", help="fast provisional rule extraction")
     sp.add_argument("--refresh", action="store_true", help="with --rules-only: redo rule rows")
+    sp.add_argument("--salaries-only", action="store_true", help="recompute salary columns only")
     sp = add("backfill", cmd_backfill, help="load a JobLens backfill JSONL file")
     sp.add_argument("path")
     sp = add("embed", cmd_embed, help="compute embeddings")
