@@ -108,6 +108,10 @@ async def evaluate_question(
         "question": q["question"],
         "answer": out.get("answer", ""),
         "tools_called": called,
+        # Full arguments and results, so a run can be investigated or re-judged later.
+        # Run files are git-ignored because results contain posting text.
+        "tool_calls": out.get("tool_calls", []),
+        "tool_results": out.get("tool_results", []),
         "error": error,
         "latency_s": round(latency, 2),
         "tokens_in": out.get("tokens_in", 0),

@@ -108,6 +108,9 @@ async def test_evaluate_question_and_aggregate(corpus: None) -> None:
     )
     r3 = await runner.evaluate_question(Agent(model=FakeChatModel(responder=s3)), None, sem)
     assert r3["recall@5"] == 1.0 and r3["mrr"] == 1.0 and r3["citation_precision"] == 1.0
+    assert r3["tool_calls"][0]["args"]["query"] == "RAG machine learning"
+    assert r3["tool_results"][0]["tool"] == "search_postings"
+    assert r3["tool_results"][0]["result"]["results"]
     agg = runner.aggregate([r, r2, r3])
     assert (
         agg["n"] == 3
