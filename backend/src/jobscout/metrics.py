@@ -52,3 +52,7 @@ SINGLE_SHOT_QUESTIONS = Counter(
     "jobscout_single_shot_questions_total",
     "Questions answered with one search, without the router",
 )
+# Dagster pipeline (incremented by the run-failure sensor on the Dagster code server).
+PIPELINE_RUN_FAILURES = Counter(
+    "jobscout_pipeline_run_failures_total", "Failed Dagster pipeline runs", ["job"]
+)
