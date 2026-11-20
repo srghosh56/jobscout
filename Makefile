@@ -7,23 +7,27 @@ export UV_PYTHON ?= $(if $(LOCAL_PY),$(LOCAL_PY),3.12)
 export UV_PYTHON_INSTALL_DIR := $(ROOT)/.tools/python
 export COREPACK_HOME := $(ROOT)/.tools/corepack
 export COREPACK_ENABLE_DOWNLOAD_PROMPT := 0
-UV := cd backend && uv run --frozen
+UV := cd backend && uv run --frozen --extra orchestration
 JS := uv run --frozen --project backend jobscout
 PNPM := cd frontend && corepack pnpm
 COMPOSE := docker compose -f deploy/docker-compose.yml --env-file .env
 GITLEAKS_VERSION := 8.30.1
+DAGSTER_HOME := $(ROOT)/.cache/dagster
+DAGSTER := cd backend && DAGSTER_HOME=$(DAGSTER_HOME) uv run --frozen --extra orchestration dagster
+DAGSTER_DEFS := jobscout.orchestration.definitions
 
 PHONY_EXTRA := golden dataset-stats eval-report db-up salary-refresh scope-refresh judge-export judge-agreement
 .PHONY: help setup gitleaks-install up down logs migrate seed ingest extract embed expiry insights \
 	serve web build-web openapi test test-backend test-frontend coverage lint lint-backend lint-frontend \
 	gitleaks eval-smoke eval-full eval-record ablations retrieval-bench scope-bench route-bench \
-	feedback-review mcp mcp-http k8s-up k8s-down gcp-plan pipeline
+	feedback-review mcp mcp-http k8s-up k8s-down gcp-plan pipeline \
+	dagster-dev dagster-validate dagster-up dagster-down k8s-dagster-up k8s-dagster-down
 
 help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
 setup: gitleaks-install ## install backend (uv) + frontend (pnpm) deps, pre-commit hook
-	cd backend && uv sync --frozen
+	cd backend && uv sync --frozen --extra orchestration
 	$(PNPM) install --frozen-lockfile --store-dir $(ROOT)/.tools/pnpm-store
 	cd backend && uv run pre-commit install -c ../.pre-commit-config.yaml || true
 
@@ -74,7 +78,24 @@ scope-refresh: ## retire postings from Arbeitnow's foreign sites, then refresh i
 insights: ## refresh insights materialised views
 	$(JS) insights
 
-pipeline: ingest extract embed insights ## full weekly pipeline
+pipeline: ingest extract embed insights ## full weekly pipeline (simple path; Dagster: dagster-dev)
+
+# ---------- orchestration (Dagster) ----------
+dagster-dev: ## Dagster UI + daemon on http://localhost:3070 (state in .cache/dagster)
+	@mkdir -p $(DAGSTER_HOME)
+	@test -f $(DAGSTER_HOME)/dagster.yaml || cp deploy/dagster/dagster.local.yaml $(DAGSTER_HOME)/dagster.yaml
+	$(DAGSTER) dev -m $(DAGSTER_DEFS) -p 3070
+
+dagster-up: ## Dagster in Compose (profile orchestration): UI http://localhost:3070
+	$(COMPOSE) --profile orchestration up -d --build postgres dagster-db-init dagster-code dagster-webserver dagster-daemon
+	@echo "Dagster: http://localhost:3070"
+
+dagster-down: ## stop the Dagster services (the rest of the stack keeps running)
+	$(COMPOSE) --profile orchestration rm -sf dagster-webserver dagster-daemon dagster-code dagster-db-init
+
+dagster-validate: ## check that the Dagster definitions load
+	@mkdir -p $(DAGSTER_HOME)
+	$(DAGSTER) definitions validate -m $(DAGSTER_DEFS)
 
 # ---------- app ----------
 serve: ## run the API with reload on :8088
@@ -167,6 +188,14 @@ k8s-up: ## kind cluster + Helm install (local only)
 
 k8s-down:
 	kind delete cluster --name jobscout
+
+k8s-dagster-up: ## Dagster on kind (official Helm chart + JobScout user code); needs k8s-up
+	deploy/k8s/dagster/up.sh
+
+k8s-dagster-down: ## remove the Dagster release and its secrets from kind
+	helm uninstall dagster --namespace jobscout --kube-context kind-jobscout --ignore-not-found
+	kubectl --context kind-jobscout -n jobscout delete secret dagster-postgresql-secret jobscout-dagster-env --ignore-not-found
+	kubectl --context kind-jobscout -n jobscout delete jobs -l app.kubernetes.io/component=run_worker,app.kubernetes.io/instance=dagster --ignore-not-found
 
 gcp-plan: ## terraform plan only
 	cd deploy/gcp && terraform init -input=false && terraform plan -input=false -var-file=terraform.tfvars

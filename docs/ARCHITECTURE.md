@@ -6,7 +6,7 @@ flowchart LR
     BA[Bundesagentur für Arbeit<br/>Jobsuche API]
     AN[Arbeitnow API]
   end
-  subgraph Pipeline["Data pipeline (make pipeline)"]
+  subgraph Pipeline["Data pipeline (make pipeline, or Dagster assets on a schedule)"]
     ING[ingest<br/>polite clients, cache,<br/>clean, upsert, MinHash dedup]
     EXT[extract<br/>LLM JSON-schema mode<br/>+ Pydantic validation]
     BC[bluecard + english_sufficient<br/>deterministic rules]
@@ -30,6 +30,8 @@ flowchart LR
     HY[hybrid retrieval<br/>FTS + vector → RRF k=60<br/>→ cross-encoder top-8]
     G[SQL guard<br/>sqlglot AST allow-list]
   end
+  DAG[Dagster<br/>weekly + daily schedules,<br/>retries, asset checks]
+  SNAP[(Parquet snapshots<br/>DuckDB · Iceberg)]
   WEB[React + TS SPA<br/>served by FastAPI]
   MCP[MCP server<br/>stdio / streamable HTTP]
   LLM[(Chat / embedding model<br/>Ollama local · Mistral · Gemini)]
@@ -42,6 +44,8 @@ flowchart LR
   P --> EMB --> P
   P --> INS --> V
   EXP --> P
+  DAG -.runs.-> Pipeline
+  P --> SNAP
   WEB --> AUTH --> SR & CH & CV & IN
   CH --> AG --> TOOLS
   TOOLS --> HY --> P
@@ -54,6 +58,9 @@ flowchart LR
   MCP --> TOOLS
   API -.-> OBS
 ```
+
+## Orchestration
+The pipeline functions run either by hand (`make pipeline`) or as Dagster assets (`jobscout/orchestration/`). Dagster adds per-source partitions, retries for network steps, blocking contract and privacy checks, a run-failure sensor with a Prometheus counter, and a columnar snapshot (Parquet → DuckDB, plus an Iceberg table) next to Postgres. The snapshot is for analytics across weeks, and Postgres stays the store that serves the app. It runs in Compose (code server, webserver and daemon; storage in a separate `dagster` database) and on kind with the official Helm chart (K8sRunLauncher, one Kubernetes Job per run). Details: [ORCHESTRATION.md](ORCHESTRATION.md).
 
 ## Request path of a chat question
 1. Browser `POST /api/chat` with an API key → auth (SHA-256 hash lookup, constant-time compare) → token bucket → request ID.

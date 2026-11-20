@@ -1,0 +1,9 @@
+# Code locations for the Dagster webserver and daemon in Docker Compose.
+# The JobScout definitions run in their own gRPC code server (service dagster-code), so
+# the webserver and daemon do not load the pipeline code themselves, and restarting the
+# code server picks up new definitions without restarting them.
+load_from:
+  - grpc_server:
+      host: dagster-code
+      port: 4000
+      location_name: jobscout

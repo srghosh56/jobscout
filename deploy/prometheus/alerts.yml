@@ -26,3 +26,18 @@ groups:
         for: 10m
         labels: {severity: ticket}
         annotations: {summary: "Sustained 429s: abuse or limits too tight"}
+      # --- Dagster pipeline (RUNBOOK: Pipeline) ---
+      - alert: PipelineRunFailed
+        expr: sum by (job) (increase(jobscout_pipeline_run_failures_total[1h])) > 0
+        labels: {severity: ticket}
+        annotations: {summary: "A Dagster pipeline run failed (RUNBOOK: Pipeline)"}
+      - alert: PipelineBlockingCheckFailed
+        expr: min by (check) (jobscout_pipeline_check_passed{severity="error"}) == 0
+        for: 5m
+        labels: {severity: ticket}
+        annotations: {summary: "A blocking data-quality or privacy check failed; downstream assets were not updated"}
+      - alert: PipelineStale
+        expr: (time() - jobscout_pipeline_last_success_timestamp_seconds{job="weekly_pipeline"}) > 8 * 86400
+        for: 1h
+        labels: {severity: ticket}
+        annotations: {summary: "No successful weekly pipeline run for more than 8 days"}

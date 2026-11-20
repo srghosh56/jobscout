@@ -83,6 +83,17 @@ class Settings(BaseSettings):
     http_min_interval_s: float = 1.0
     http_cache_dir: Path = REPO_ROOT / ".cache" / "http"
 
+    # --- Orchestration (Dagster; see docs/ORCHESTRATION.md) -----------------
+    # live: call both APIs; offline: replay the recorded cache only; fixtures: fictional
+    # payloads served in-process (no network, used by tests, Compose and kind demos).
+    pipeline_ingest_mode: Literal["live", "offline", "fixtures"] = "live"
+    pipeline_ingest_limit: int | None = None
+    pipeline_llm_extraction: bool = False  # off by default: runs work without a model
+    pipeline_llm_limit: int | None = None
+    pipeline_expiry_limit: int = 500
+    snapshot_dir: Path = REPO_ROOT / ".cache" / "snapshots"
+    pipeline_metrics_port: int | None = None  # set only on the Dagster code server
+
     # --- Observability -----------------------------------------------------
     otel_enabled: bool = False
     otel_exporter_otlp_endpoint: str = "http://localhost:4318"
