@@ -23,3 +23,12 @@ make k8s-down    # delete the cluster (other kind clusters are untouched)
 **Argo CD:** install Argo CD in the cluster, then `kubectl apply -f deploy/k8s/argocd/application.yaml`. This manifest has not been applied yet.
 
 **Scaling beyond 1 replica:** needs a shared LangGraph checkpointer and a shared rate-limit store.
+
+## Dagster (pipeline orchestration)
+
+`make k8s-dagster-up` (after `make k8s-up`) installs the official Dagster chart (`dagster/dagster` 1.13.31 from https://dagster-io.github.io/helm) into the `jobscout` namespace with `dagster/values.yaml`:
+- the webserver and daemon;
+- a `jobscout-pipeline` user-code deployment (`jobscout-dagster:local`, loaded into kind);
+- `K8sRunLauncher`, one Kubernetes Job per run.
+
+Dagster's storage is a `dagster` database in the JobScout Postgres. `dagster/up.sh` creates the two Secrets with `kubectl create secret` from the JobScout release Secret, so no secret is in a values file. It also runs `helm lint` on the pulled chart, installs it, and applies migrations from the user-code pod. `DAGSTER_PIPELINE_DB=<name>` points the pipeline at a separate database. `make k8s-dagster-down` removes the release and the Secrets. Details and recorded runs: [docs/ORCHESTRATION.md](../../docs/ORCHESTRATION.md).

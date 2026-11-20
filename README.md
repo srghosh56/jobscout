@@ -8,6 +8,7 @@
 - **CV match** with per-posting skill, language and experience gaps. CVs are processed in memory.
 - **Market insights** on English-friendliness, salary transparency and top skills, plus saved searches as RSS/Atom feeds.
 - **MCP server** exposing five of the agent's tools with the same guardrails.
+- **Orchestration:** the data pipeline as Dagster assets with a weekly schedule, retries, blocking data-quality and privacy checks, and a Parquet/DuckDB/Iceberg snapshot.
 - **Infrastructure:** Docker Compose stack, Helm chart for Kubernetes (run on a local kind cluster), an Argo CD application, and Terraform for Google Cloud (validated, not applied).
 
 ## Architecture
@@ -26,6 +27,26 @@ flowchart LR
   API -.-> OBS[OTel → Jaeger · Prometheus → Grafana]
 ```
 More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Orchestration
+`make pipeline` is the simple path: four commands, run by hand. Dagster is the scheduled, observable path. It runs the same functions as assets, on a weekly schedule (Mondays 03:00 Berlin), with daily expiry checks. Network steps retry with backoff, and ten checks guard the data. Blocking checks (IDs, required fields, extraction schema, salary consistency, embeddings, no stored CV text, masked contact details in the snapshot) stop everything downstream. Freshness and volume checks only warn.
+
+```mermaid
+flowchart LR
+  RAW[raw_postings<br/>partition per source] --> DED[deduplicated_postings] --> SCOPE[in_scope_postings]
+  SCOPE --> EXT[extracted_fields] --> SAL[salary_bluecard] --> INS[insights_views]
+  SCOPE --> EMB[posting_embeddings] --> INS
+  SAL --> SNAP[postings_snapshot<br/>Parquet + DuckDB] --> SQ[snapshot_insights]
+  SNAP --> ICE[postings_iceberg]
+  EXP[posting_expiry · daily]
+```
+
+```bash
+make dagster-dev       # local UI on http://localhost:3070
+make dagster-up        # Compose: code server, webserver, daemon (profile orchestration)
+make k8s-dagster-up    # kind: official Dagster Helm chart + JobScout user-code deployment
+```
+A failed run increments a Prometheus counter and shows on the Grafana dashboard. Verified runs in Compose and on kind, the check list and backfills: [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md).
 
 ## Evaluation
 Mistral 7B as the agent and Llama 3.2 as the judge, both local via Ollama. 80-question golden set, reviewed by hand, on 2,651 active postings in Germany from the Bundesagentur für Arbeit and Arbeitnow.
@@ -60,6 +81,7 @@ make lint       # ruff, mypy --strict, ESLint, Prettier, tsc, gitleaks
 make eval-smoke # replayed evaluation, no API keys needed
 make mcp        # MCP server over stdio
 make k8s-up     # local Kubernetes: kind cluster + Helm install
+make dagster-validate  # Dagster definitions load
 ```
 
 ## Status
@@ -71,13 +93,13 @@ JobScout is under development.
 - Most postings use rule-based extraction (2,775 rules, 228 LLM). Salary extraction favours precision, so some stated salaries are missed, and most ads state none.
 - Semantic labels are rule-based, reviewed by one person, and judge agreement rests on 20 answers.
 - Local latency is high: a median of about 34 seconds per question.
-- The data is one load from 1 November 2026. Weekly ingestion is not scheduled, and only 20 postings have been checked for expiry.
+- The data is one load from 1 November 2026. Weekly ingestion and daily expiry checks are now scheduled in Dagster, but only run where Dagster is running. They have been tested on fictional fixtures in Compose and on kind, not yet on the real corpus, and only 20 real postings have been checked for expiry.
 - Not deployed, and no real users yet. The Argo CD application and Terraform have not been applied. Posting texts are stored only in the local database and are not in this repository.
 
 ## Roadmap
 - **Better answers:** repeat the evaluation with a stronger model through the existing `LLM_PROVIDER` switch.
 - **Better data:** finish LLM extraction for all postings, then re-measure rules against LLM agreement.
-- **Freshness:** complete expiry checks for all postings and schedule ingestion weekly.
+- **Freshness:** keep the Dagster schedules running against the real database, so ingestion runs weekly and expiry checks cover all postings.
 - **Deployment:** publish a hosted demo with data from the Bundesagentur für Arbeit only, then install Argo CD on the kind cluster and sync the application.
 
 ## Data and licence
