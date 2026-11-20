@@ -1,0 +1,20 @@
+# Dagster instance for Docker Compose (profile "orchestration").
+# Run, event-log and schedule storage live in the Compose Postgres, in a separate
+# database ("dagster"), never in the application database.
+# Docs: https://docs.dagster.io/deployment/dagster-instance
+storage:
+  postgres:
+    postgres_db:
+      hostname: {env: DAGSTER_PG_HOST}
+      username: {env: DAGSTER_PG_USERNAME}
+      password: {env: DAGSTER_PG_PASSWORD}
+      db_name: {env: DAGSTER_PG_DB}
+      port: 5432
+
+# One pipeline run at a time: two overlapping runs would both rewrite duplicate marks.
+concurrency:
+  runs:
+    max_concurrent_runs: 1
+
+telemetry:
+  enabled: false

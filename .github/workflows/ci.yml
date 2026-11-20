@@ -35,16 +35,23 @@ jobs:
         with:
           enable-cache: true
       - run: uv python install 3.12
-      - name: Install
+      - name: Install (with the orchestration extra)
         working-directory: backend
-        run: uv sync --frozen
+        run: uv sync --frozen --extra orchestration
       - name: Lint and types
         working-directory: backend
         run: |
           uv run ruff check src tests ../eval
           uv run ruff format --check src tests ../eval
           uv run mypy
-      - name: Tests (coverage >= 80%)
+      - name: Dagster definitions load
+        working-directory: backend
+        env:
+          DAGSTER_HOME: ${{ runner.temp }}/dagster
+        run: |
+          mkdir -p "$DAGSTER_HOME"
+          uv run dagster definitions validate -m jobscout.orchestration.definitions
+      - name: Tests (coverage >= 80%, includes the orchestration tests)
         working-directory: backend
         run: uv run pytest --cov=jobscout --cov-report=xml --cov-fail-under=80
       - name: Smoke evaluation (replayed from cassettes, no API keys)

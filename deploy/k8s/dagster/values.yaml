@@ -1,0 +1,99 @@
+# Values for the official Dagster chart (repo https://dagster-io.github.io/helm, chart
+# dagster/dagster 1.13.31) on the local kind cluster, next to the JobScout release.
+# Installed by deploy/k8s/dagster/up.sh (make k8s-dagster-up).
+#
+# No secret is set here. up.sh creates two Kubernetes Secrets from the JobScout release's
+# Secret: dagster-postgresql-secret (key postgresql-password) and jobscout-dagster-env
+# (DATABASE_URL, READONLY_DATABASE_URL and the optional model API keys).
+
+global:
+  postgresqlSecretName: dagster-postgresql-secret
+
+# Dagster's run/event/schedule storage: database "dagster" in the JobScout Postgres.
+postgresql:
+  enabled: false
+  postgresqlHost: jobscout-postgres
+  postgresqlUsername: jobscout
+  postgresqlDatabase: dagster
+  service:
+    port: 5432
+generatePostgresqlPasswordSecret: false
+
+dagsterWebserver:
+  image:
+    pullPolicy: IfNotPresent
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+dagsterDaemon:
+  image:
+    pullPolicy: IfNotPresent
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+# Each run gets its own Kubernetes Job and pod, built from the user-code image below.
+runLauncher:
+  type: K8sRunLauncher
+  config:
+    k8sRunLauncher:
+      imagePullPolicy: IfNotPresent
+
+# One pipeline run at a time: overlapping runs would both rewrite duplicate marks.
+concurrency:
+  enabled: true
+  runs:
+    maxConcurrentRuns: 1
+
+telemetry:
+  enabled: false
+
+dagster-user-deployments:
+  enabled: true
+  enableSubchart: true
+  deployments:
+    - name: jobscout-pipeline   # also the Service name: must not clash with the app Service
+      image:
+        repository: jobscout-dagster   # loaded into kind by up.sh, never pushed
+        tag: local
+        pullPolicy: IfNotPresent
+      dagsterApiGrpcArgs: ["-m", "jobscout.orchestration.definitions"]
+      port: 4000
+      # Env, secrets, volumes and resources below are also applied to every run pod.
+      includeConfigInLaunchedRuns:
+        enabled: true
+      env:
+        # kind is a local demo: fictional fixtures by default. Set "live" to call the job APIs.
+        - {name: PIPELINE_INGEST_MODE, value: fixtures}
+        - {name: PIPELINE_LLM_EXTRACTION, value: "false"}
+        - {name: OLLAMA_BASE_URL, value: "http://host.docker.internal:11434"}
+        - {name: LOG_JSON, value: "true"}
+      envSecrets:
+        - name: jobscout-dagster-env
+      resources:
+        requests: {cpu: 250m, memory: 512Mi}
+        limits: {cpu: "2", memory: 2Gi}
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities: {drop: [ALL]}
+      volumes:
+        - name: snapshots
+          persistentVolumeClaim:
+            claimName: jobscout-dagster-snapshots
+      volumeMounts:
+        - name: snapshots
+          mountPath: /app/.cache/snapshots
+
+# Parquet/DuckDB/Iceberg snapshots survive run pods (kind's local-path storage).
+extraManifests:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: jobscout-dagster-snapshots
+    spec:
+      accessModes: [ReadWriteOnce]
+      resources:
+        requests:
+          storage: 1Gi

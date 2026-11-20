@@ -7,3 +7,8 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["api:8088"]
+  # Dagster code server (Compose profile "orchestration"); shows as down when the profile is off.
+  - job_name: jobscout-dagster
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["dagster-code:9465"]

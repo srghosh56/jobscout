@@ -1,6 +1,19 @@
 # Local stack: make up  (API+web http://localhost:8088, Jaeger :16686, Prometheus :9091, Grafana :3001)
 # Ports avoid 8080/8000/9090/3000, which other local services use on the dev machine.
 name: jobscout
+
+# Shared by the Dagster services (profile "orchestration").
+x-dagster-env: &dagster-env
+  DAGSTER_PG_HOST: postgres
+  DAGSTER_PG_USERNAME: jobscout
+  DAGSTER_PG_PASSWORD: jobscout   # local only, same as the Postgres service
+  DAGSTER_PG_DB: dagster
+  DATABASE_URL: ${DAGSTER_PIPELINE_DATABASE_URL:-postgresql+asyncpg://jobscout:jobscout@postgres:5432/jobscout}
+  READONLY_DATABASE_URL: ${DAGSTER_PIPELINE_READONLY_DATABASE_URL:-postgresql+asyncpg://jobscout_ro:jobscout_ro@postgres:5432/jobscout}
+  OLLAMA_BASE_URL: http://host.docker.internal:11434
+  PIPELINE_INGEST_MODE: ${PIPELINE_INGEST_MODE:-live}
+  PIPELINE_LLM_EXTRACTION: ${PIPELINE_LLM_EXTRACTION:-false}
+
 services:
   postgres:
     image: pgvector/pgvector:0.8.7-pg17
@@ -62,5 +75,65 @@ services:
     ports: ["3001:3000"]
     depends_on: [prometheus]
 
+  # ---------- Dagster (profile "orchestration": make dagster-up) ----------
+  # Run/event storage: database "dagster" in the same Postgres (created by dagster-db-init).
+  # The pipeline writes to DAGSTER_PIPELINE_DATABASE_URL (default: the app database).
+  dagster-db-init:
+    profiles: [orchestration]
+    image: pgvector/pgvector:0.8.7-pg17
+    environment:
+      PGPASSWORD: jobscout
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        psql -h postgres -U jobscout -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'dagster'" | grep -q 1
+        || psql -h postgres -U jobscout -d postgres -c "CREATE DATABASE dagster"
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  dagster-code:
+    profiles: [orchestration]
+    build:
+      context: ..
+      dockerfile: deploy/dagster/Dockerfile
+    image: jobscout-dagster:local
+    env_file: [../.env]
+    environment:
+      <<: *dagster-env
+      PIPELINE_METRICS_PORT: "9465"   # Prometheus exporter (sensor counter + run/check gauges)
+    # Migrations are idempotent; then serve the definitions over gRPC.
+    command: ["sh", "-c", "jobscout migrate && exec dagster api grpc -m jobscout.orchestration.definitions -h 0.0.0.0 -p 4000"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ../.cache/http:/app/.cache/http:ro   # recorded API responses (PIPELINE_INGEST_MODE=offline)
+      - snapshots:/app/.cache/snapshots
+    healthcheck:
+      test: ["CMD", "dagster", "api", "grpc-health-check", "-p", "4000"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    depends_on:
+      postgres: {condition: service_healthy}
+      dagster-db-init: {condition: service_completed_successfully}
+
+  dagster-webserver:
+    profiles: [orchestration]
+    image: jobscout-dagster:local
+    environment: *dagster-env
+    command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3070", "-w", "/opt/dagster/dagster_home/workspace.yaml"]
+    ports: ["3070:3070"]
+    depends_on:
+      dagster-code: {condition: service_healthy}
+
+  dagster-daemon:
+    profiles: [orchestration]
+    image: jobscout-dagster:local
+    environment: *dagster-env
+    command: ["dagster-daemon", "run", "-w", "/opt/dagster/dagster_home/workspace.yaml"]
+    restart: unless-stopped
+    depends_on:
+      dagster-code: {condition: service_healthy}
+
 volumes:
   pgdata:
+  snapshots:
