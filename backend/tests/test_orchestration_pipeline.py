@@ -131,6 +131,18 @@ def test_expiry_job_in_fixture_mode(empty_db: None, defs: Any) -> None:
     assert (stats["checked"], stats["alive"], stats["deactivated"]) == (5, 5, 0)
 
 
+def test_expiry_makes_no_requests_in_offline_mode(empty_db: None, tmp_path: Path) -> None:
+    from jobscout.orchestration.assets.pipeline import posting_expiry
+
+    defs = dg.Definitions(
+        assets=[posting_expiry],
+        resources={"db": JobScoutDb(), "jobscout": JobScoutSettings(ingest_mode="offline")},
+    )
+    result = defs.resolve_implicit_global_asset_job_def().execute_in_process()
+    assert result.success
+    assert materialized(result)["posting_expiry"] == {"skipped": "offline mode makes no requests"}
+
+
 def test_malformed_posting_id_blocks_everything_downstream(empty_db: None, defs: Any) -> None:
     sql(
         "INSERT INTO postings (id, source, source_id, url, title, raw_text, content_hash) "
