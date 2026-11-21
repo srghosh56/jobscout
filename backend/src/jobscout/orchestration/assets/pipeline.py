@@ -233,11 +233,15 @@ def insights_views(db: JobScoutDb) -> dg.MaterializeResult[Any]:
     retry_policy=NETWORK_RETRY,
     kinds={"python", "postgres"},
     description="Posting URLs checked; a posting becomes inactive after two consecutive "
-    "'gone' results. Runs on its own daily schedule, oldest-checked first.",
+    "'gone' results. Runs on its own daily schedule, oldest-checked first. Skipped in "
+    "offline mode.",
 )
 def posting_expiry(db: JobScoutDb, jobscout: JobScoutSettings) -> dg.MaterializeResult[Any]:
     from jobscout.expiry import run_expiry
 
+    if jobscout.mode == "offline":
+        # Offline means no requests at all; checking URLs would contact the job sites.
+        return dg.MaterializeResult(metadata={"skipped": "offline mode makes no requests"})
     t0 = time.monotonic()
     fixtures = jobscout.mode == "fixtures"
     stats = db.run(
