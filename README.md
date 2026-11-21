@@ -46,7 +46,7 @@ make dagster-dev       # local UI on http://localhost:3070
 make dagster-up        # Compose: code server, webserver, daemon (profile orchestration)
 make k8s-dagster-up    # kind: official Dagster Helm chart + JobScout user-code deployment
 ```
-A failed run increments a Prometheus counter and shows on the Grafana dashboard. Verified runs in Compose and on kind, the check list and backfills: [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md).
+A failed run increments a Prometheus counter and shows on the Grafana dashboard. On a copy of the real corpus (2,656 active postings, replayed offline) the weekly job took 82 s and passed all ten checks. Runs, checks and backfills: [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md).
 
 ## Evaluation
 Mistral 7B as the agent and Llama 3.2 as the judge, both local via Ollama. 80-question golden set, reviewed by hand, on 2,651 active postings in Germany from the Bundesagentur für Arbeit and Arbeitnow.
@@ -93,7 +93,7 @@ JobScout is under development.
 - Most postings use rule-based extraction (2,775 rules, 228 LLM). Salary extraction favours precision, so some stated salaries are missed, and most ads state none.
 - Semantic labels are rule-based, reviewed by one person, and judge agreement rests on 20 answers.
 - Local latency is high: a median of about 34 seconds per question.
-- The data is one load from 1 November 2026. Weekly ingestion and daily expiry checks are now scheduled in Dagster, but only run where Dagster is running. They have been tested on fictional fixtures in Compose and on kind, not yet on the real corpus, and only 20 real postings have been checked for expiry.
+- The data is one load from 1 November 2026. Weekly ingestion and daily expiry checks are now scheduled in Dagster, but only run where Dagster is running. The weekly job has run once on a copy of the real corpus in Compose (replaying the recorded responses: 2,656 active postings, 82 s, all checks passed) and on fictional fixtures on kind. Only 20 real postings have been checked for expiry.
 - Not deployed, and no real users yet. The Argo CD application and Terraform have not been applied. Posting texts are stored only in the local database and are not in this repository.
 
 ## Roadmap

@@ -57,7 +57,7 @@ flowchart LR
 | `postings_snapshot` | Parquet + DuckDB export | rows, file, bytes, DuckDB rows over all snapshots |
 | `snapshot_insights` | three DuckDB queries | result tables as Markdown |
 | `postings_iceberg` | PyIceberg overwrite of today's rows | rows now, rows before this run (time travel), Iceberg snapshots |
-| `posting_expiry` | `run_expiry` | checked, alive, gone, unknown, deactivated |
+| `posting_expiry` | `run_expiry` (skipped in offline mode, which makes no requests) | checked, alive, gone, unknown, deactivated |
 
 The LLM step is off by default, so a run needs no model. The `fixtures` ingest mode (`PIPELINE_INGEST_MODE=fixtures`) serves fictional API responses in-process (`jobscout/orchestration/fixtures.py`). The real fetchers, cleaning, upsert and dedup still run, but nothing reaches the network. `offline` replays the recorded HTTP cache, and `live` calls the APIs.
 
@@ -176,7 +176,34 @@ The upsert is idempotent, so unchanged postings only get `last_seen_at` refreshe
 
 `postings_iceberg` writes the same rows to an Apache Iceberg table through PyIceberg. It uses a local SQL catalog (SQLite) and a warehouse folder. Each run overwrites today's rows (one delete and one append commit), then reads the table as it was before the run (time travel by snapshot ID).
 
-## Results recorded on 2026-11-20
+## Results on the real corpus (2026-11-21)
+
+The weekly job ran in Docker Compose on a copy of the application database: 3,294 postings, 2,656 of them active and not duplicates. It used `PIPELINE_INGEST_MODE=offline`, which replays the API responses recorded on 1 November 2026 and makes no requests, so the postings are real but not newer than that date. LLM extraction was off. The application database itself was not changed.
+
+| Asset | Result |
+|---|---|
+| `raw_postings` | 2,907 postings replayed (Bundesagentur 1,418, Arbeitnow 1,489): 0 new, 90 changed, 2,817 unchanged |
+| `deduplicated_postings` | 252 near-duplicates marked, 15.1 s |
+| `in_scope_postings` | 386 postings outside Germany pruned (rows already retired from Arbeitnow's foreign sites), 2,656 active |
+| `extracted_fields` | 87 changed postings re-extracted with rules. Totals: 2,463 by rules, 190 by the LLM (earlier runs), 3 failed |
+| `posting_embeddings` | 87 embedded with `bge-m3` (Ollama), 2.3 s |
+| `salary_bluecard` | 2,656 checked, 12.7 s. Blue Card: 210 meet the standard threshold, 16 only the reduced one, 58 below, 2,372 state no salary |
+| `postings_snapshot` | 2,653 rows, 4.3 MB of Parquet, 2.0 s |
+| `postings_iceberg` | 2,653 rows written, 0.5 s |
+| whole run | **success in 82.2 s; 10 of 10 checks passed** |
+
+`snapshot_insights` on that snapshot (cells of at least 5 postings):
+
+| Source | Postings | Share stating a salary | Median annual minimum |
+|---|---|---|---|
+| Arbeitnow | 1,279 | 11.9% | €60,000 |
+| Bundesagentur für Arbeit | 1,374 | 9.6% | €70,000 |
+
+Share of English-friendly postings in the largest cities: Berlin 27.8% (593), München 28.4% (433), Hamburg 15.1% (245), Frankfurt am Main 9.7% (145), Köln 4.7% (129). The skills most requested in English-friendly postings were Python (124), AWS (61), CI/CD (61), Excel (42) and Kubernetes (42).
+
+The snapshot steps were re-run once into a fresh folder, so these figures contain no fixture rows. The expiry check is not part of this run: it contacts the job sites, and offline mode now skips it.
+
+## Results on fixtures (2026-11-20)
 
 All runs used the fictional fixtures (`PIPELINE_INGEST_MODE=fixtures`, 6 postings, 3 per source) on a separate database, `jobscout_orch`. The application data was not touched. Numbers are copied from the Dagster run metadata.
 
@@ -204,6 +231,7 @@ All runs used the fictional fixtures (`PIPELINE_INGEST_MODE=fixtures`, 6 posting
 
 ## Limits
 
-- The demo runs use 6 fictional postings. Run times on the real corpus were not measured.
+- The real-corpus run replays recorded responses (offline) with the LLM step off. Live ingestion and LLM extraction were not timed in Dagster.
+- A few thousand postings is a modest volume. Larger volumes were not measured.
 - Snapshots on kind live on a single-node local-path volume. A shared deployment needs object storage (and an object-store Iceberg catalog).
 - The metrics exporter runs in the code server only. On kind it is not scraped, because there is no Prometheus in that cluster.
